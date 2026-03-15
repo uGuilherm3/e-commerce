@@ -506,28 +506,16 @@ export default function AdminPanel({ onBack }) {
                     
                     <div className="space-y-6">
                       {banners.map((banner, index) => (
-                        <div key={banner.id} className="bg-white border border-neutral-200 rounded-2xl p-6 shadow-sm relative group">
-                          
-                          {/* Controles de Ordem e Remoção */}
-                          <div className="absolute -left-3 top-6 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button type="button" onClick={() => handleMoveBanner(index, "up")} disabled={index === 0} className="w-8 h-8 bg-white border border-neutral-200 rounded-full flex items-center justify-center text-neutral-500 hover:text-neutral-900 disabled:opacity-30 shadow-sm"><ChevronUp className="w-4 h-4" /></button>
-                            <button type="button" onClick={() => handleMoveBanner(index, "down")} disabled={index === banners.length - 1} className="w-8 h-8 bg-white border border-neutral-200 rounded-full flex items-center justify-center text-neutral-500 hover:text-neutral-900 disabled:opacity-30 shadow-sm"><ChevronDown className="w-4 h-4" /></button>
-                          </div>
-                          
-                          <button type="button" onClick={() => handleRemoveBanner(banner.id)} className="absolute top-6 right-6 text-neutral-400 hover:text-red-500 transition-colors p-2 bg-neutral-50 rounded-lg hover:bg-red-50">
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-
-                          <div className="flex items-center gap-2 mb-4">
-                            <span className="bg-neutral-900 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold">{index + 1}</span>
-                            <h3 className="font-medium text-neutral-900">Configuração do Banner</h3>
-                          </div>
-                          
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                             
-                            {/* Preview Visual */}
+                            {/* Preview Visual (AGORA ATUALIZA EM TEMPO REAL COM O LINK) */}
                             <div className="w-full h-48 lg:h-full rounded-xl overflow-hidden relative shadow-inner border border-neutral-200 bg-neutral-900">
-                              <img src={banner.file ? URL.createObjectURL(banner.file) : banner.imageUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                              <img 
+                                src={banner.file ? URL.createObjectURL(banner.file) : (banner.linkUrl || banner.imageUrl)} 
+                                alt="Preview" 
+                                className="absolute inset-0 w-full h-full object-cover opacity-60" 
+                                onError={(e) => { e.target.src = DEFAULT_CAROUSEL_IMG; }} // Se o link for inválido, não quebra a tela
+                              />
                               <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                                 <span className="text-white/80 uppercase tracking-widest text-[10px] font-medium mb-1 drop-shadow-sm">{banner.tag || "TAG AQUI"}</span>
                                 <h3 className="text-2xl font-serif italic text-white mb-2 drop-shadow-md">{banner.title || "TÍTULO AQUI"}</h3>
@@ -538,17 +526,17 @@ export default function AdminPanel({ onBack }) {
                             {/* Campos de Edição */}
                             <div className="space-y-4">
                               <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Pequena Tag Superior</label><input type="text" value={banner.tag} onChange={(e) => handleUpdateBanner(banner.id, "tag", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none text-sm" placeholder="Ex: Verão 2026" /></div>
-                                <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título Grande Principal</label><input type="text" value={banner.title} onChange={(e) => handleUpdateBanner(banner.id, "title", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none text-sm" placeholder="Ex: Nova Coleção" /></div>
+                                <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Pequena Tag Superior</label><input type="text" value={banner.tag || ""} onChange={(e) => handleUpdateBanner(banner.id, "tag", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none text-sm" placeholder="Ex: Verão 2026" /></div>
+                                <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título Grande Principal</label><input type="text" value={banner.title || ""} onChange={(e) => handleUpdateBanner(banner.id, "title", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none text-sm" placeholder="Ex: Nova Coleção" /></div>
                               </div>
                               
-                              <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Breve Descrição</label><textarea rows="2" value={banner.desc} onChange={(e) => handleUpdateBanner(banner.id, "desc", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none resize-none text-sm" placeholder="Ex: As peças mais quentes da estação..." /></div>
+                              <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Breve Descrição</label><textarea rows="2" value={banner.desc || ""} onChange={(e) => handleUpdateBanner(banner.id, "desc", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none resize-none text-sm" placeholder="Ex: As peças mais quentes da estação..." /></div>
                               
                               <div className="grid grid-cols-2 gap-4">
-                                <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Texto do Botão</label><input type="text" value={banner.btn} onChange={(e) => handleUpdateBanner(banner.id, "btn", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none text-sm" placeholder="Ex: Ver Ofertas" /></div>
+                                <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Texto do Botão</label><input type="text" value={banner.btn || ""} onChange={(e) => handleUpdateBanner(banner.id, "btn", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none text-sm" placeholder="Ex: Ver Ofertas" /></div>
                                 <div>
                                   <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Ao Clicar, rolar para...</label>
-                                  <select value={banner.target} onChange={(e) => handleUpdateBanner(banner.id, "target", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none text-sm bg-white">
+                                  <select value={banner.target || "lancamentos"} onChange={(e) => handleUpdateBanner(banner.id, "target", e.target.value)} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 focus:outline-none text-sm bg-white">
                                     <option value="lancamentos">Lançamentos</option>
                                     <option value="ofertas">Ofertas Limitadas</option>
                                     <option value="mais-desejados">Mais Desejados</option>
@@ -557,18 +545,30 @@ export default function AdminPanel({ onBack }) {
                                 </div>
                               </div>
                               
+                              {/* INPUT DE FOTO/LINK CORRIGIDO */}
                               <div>
                                 <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Imagem de Fundo (Foto HD)</label>
                                 <div className="flex flex-col gap-2 p-2 bg-neutral-50 border border-neutral-200 rounded-lg">
                                   <input type="file" accept="image/*" onChange={(e) => { handleUpdateBanner(banner.id, "file", e.target.files[0]); handleUpdateBanner(banner.id, "linkUrl", ""); }} className="w-full file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-white file:text-neutral-700 hover:file:bg-neutral-100 text-xs" />
                                   <div className="flex items-center gap-2"><div className="flex-1 h-px bg-neutral-200"></div><span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">OU COLOQUE O LINK</span><div className="flex-1 h-px bg-neutral-200"></div></div>
-                                  <div className="relative"><div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none"><LinkIcon className="w-3 h-3 text-neutral-400" /></div><input type="url" placeholder="https://exemplo.com/foto.jpg" value={banner.linkUrl} onChange={(e) => { handleUpdateBanner(banner.id, "linkUrl", e.target.value); handleUpdateBanner(banner.id, "file", null); }} className="w-full pl-8 pr-2 py-1.5 text-xs bg-white border border-neutral-200 rounded-md focus:ring-1 focus:ring-neutral-900 focus:outline-none" /></div>
+                                  <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none"><LinkIcon className="w-3 h-3 text-neutral-400" /></div>
+                                    <input 
+                                      type="url" 
+                                      placeholder="https://exemplo.com/foto.jpg" 
+                                      value={banner.linkUrl || ""} 
+                                      onChange={(e) => { 
+                                        handleUpdateBanner(banner.id, "linkUrl", e.target.value); 
+                                        handleUpdateBanner(banner.id, "file", null); 
+                                      }} 
+                                      className="w-full pl-8 pr-2 py-1.5 text-xs bg-white border border-neutral-200 rounded-md focus:ring-1 focus:ring-neutral-900 focus:outline-none" 
+                                    />
+                                  </div>
                                 </div>
                               </div>
 
                             </div>
                           </div>
-                        </div>
                       ))}
                     </div>
                   </div>
