@@ -1,0 +1,41 @@
+@import "tailwindcss";
+@variant dark (&:where(.dark, .dark *));
+
+/* 1. Criando as nossas variáveis no Tailwind */
+@theme {
+  --color-fundo: var(--cor-fundo);
+  --color-card: var(--cor-card);
+  --color-texto: var(--cor-texto);
+  --color-texto-sec: var(--cor-texto-sec);
+  --color-borda: var(--cor-borda);
+  --color-btn: var(--cor-btn);
+  --color-btn-texto: var(--cor-btn-texto);
+}
+
+/* 2. Cores do Modo Claro (Padrão) */
+:root {
+  --cor-fundo: #f8fafc;     /* Fundo geral da página */
+  --cor-card: #ffffff;      /* Fundo branco dos cards e menus */
+  --cor-texto: #171717;     /* Texto quase preto (ótima leitura) */
+  --cor-texto-sec: #737373; /* Textos secundários (cinza) */
+  --cor-borda: #e5e5e5;     /* Linhas de divisão */
+  --cor-btn: #171717;       /* Botões Pretos */
+  --cor-btn-texto: #ffffff; /* Texto do botão Branco */
+}
+
+/* 3. Cores do Modo Escuro (Grafite Suave e Branco Perolado) */
+.dark {
+  --cor-fundo: #202024;     /* Cinza chumbo/grafite escuro (Não machuca o olho) */
+  --cor-card: #27272a;      /* Levemente mais claro para os cards destacarem */
+  --cor-texto: #f4f4f5;     /* Branco perolado/gelo (Não estoura a visão) */
+  --cor-texto-sec: #a1a1aa; /* Cinza médio elegante */
+  --cor-borda: #3f3f46;     /* Linhas discretas */
+  --cor-btn: #f4f4f5;       /* Botões Brancos */
+  --cor-btn-texto: #18181b; /* Texto do botão Escuro */
+}
+
+.carrossel-login{
+    margin: 10px;
+    padding: 15px;
+    border-radius: 20px;
+}
