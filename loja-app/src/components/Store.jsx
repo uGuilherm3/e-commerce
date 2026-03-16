@@ -371,11 +371,15 @@ export default function Store({ currentUser, onLogout }) {
   const infoBannerBtn = storeSettings?.get("infoBannerBtn") !== undefined ? storeSettings.get("infoBannerBtn") : "Explorar";
   const infoBannerImageUrl = storeSettings?.get("infoBannerImageUrl") || "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop";
 
+  // Sincroniza a barra de progresso dourada com os slides
   useEffect(() => {
     if (bannersArray.length <= 1) return;
-    const interval = setInterval(() => setCurrentBannerIndex((prev) => (prev + 1) % bannersArray.length), 5000);
+    const interval = setInterval(() => {
+      setCurrentBannerIndex((prev) => (prev + 1) % bannersArray.length);
+    }, 5000);
+    // Agora o timer reinicia se o usuário clicar na barra manualmente
     return () => clearInterval(interval);
-  }, [bannersArray.length]);
+  }, [bannersArray.length, currentBannerIndex]);
 
   // =========================================
   // CARDS DE PRODUTO (SEM ZOOM / FLAT DESIGN)
@@ -1131,7 +1135,7 @@ export default function Store({ currentUser, onLogout }) {
       </div>
 
       {/* ========================================================================= */}
-      {/* MINI-MODAL DE ADIÇÃO RÁPIDA */}
+      {/* MINI-MODAL DE ADIÇÃO RÁPIDA (Escolher a cor ou modelo do produto) */}
       {/* ========================================================================= */}
       <AnimatePresence>
         {quickAdd.isOpen && quickAdd.product && (
@@ -1180,12 +1184,12 @@ export default function Store({ currentUser, onLogout }) {
       </AnimatePresence>
 
       {/* ========================================================================= */}
-      {/* MODAL GIGANTE DE DETALHES DO PRODUTO */}
+      {/* MODAL GIGANTE DE DETALHES DO PRODUTO (PÁGINA SEPARADA DO PRODUTO)*/}
       {/* ========================================================================= */}
       <AnimatePresence>
         {detailedProduct && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-0 sm:p-4 md:p-6 lg:p-10 bg-black/90 backdrop-blur-xl" onClick={() => setDetailedProduct(null)}>
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 30 }} transition={{ type: "spring", bounce: 0, duration: 0.6 }} className="bg-card w-full h-full max-w-[1400px] sm:rounded-[32px] md:rounded-[40px] overflow-hidden shadow-2xl flex flex-col md:flex-row relative transition-colors duration-500" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-0 sm:p-4 md:p-6 lg:p-10 bg-black/30 backdrop-blur-md" onClick={() => setDetailedProduct(null)}>
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 30 }} transition={{ type: "spring", bounce: 0, duration: 0.6 }} className="bg-card w-full h-full max-w-[1400px] sm:rounded-[32px] md:rounded-[20px] overflow-hidden shadow-2xl flex flex-col md:flex-row relative transition-colors duration-500" onClick={(e) => e.stopPropagation()}>
               <button onClick={() => setDetailedProduct(null)} className="hidden md:flex absolute top-6 right-6 lg:top-8 lg:right-8 z-20 p-3 lg:p-4 bg-fundo hover:bg-borda rounded-full transition-colors text-texto shadow-xl"><X className="w-5 h-5 lg:w-6 lg:h-6" /></button>
               
               <div className="w-full md:w-[50%] lg:w-[55%] h-[40vh] md:h-full bg-black relative shrink-0">
@@ -1201,14 +1205,12 @@ export default function Store({ currentUser, onLogout }) {
                 <div className="mb-4 md:mb-6"><span className="text-[10px] md:text-xs font-bold tracking-widest text-texto-sec uppercase">{detailedProduct.get("category") || "Premium"}</span></div>
                 
                 <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif italic text-texto mb-4 md:mb-6 leading-tight break-words pr-8 md:pr-12">{detailedProduct.get("name")}</h2>
-                
-                <button onClick={(e) => toggleFavorite(detailedProduct.id, e)} className="absolute top-6 right-6 lg:top-8 lg:right-8 p-2.5 md:p-3 bg-fundo rounded-full hover:bg-borda transition-colors hidden md:block"><Heart className="w-5 h-5 md:w-6 md:h-6 text-texto" fill={favorites.includes(detailedProduct.id) ? "currentColor" : "none"} strokeWidth={favorites.includes(detailedProduct.id) ? 0 : 2}/></button>
-                
+                                
                 <div className="mb-6 md:mb-8">
                   {getActivePromo(detailedProduct).isActive ? (
                     <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                       <span className="text-texto-sec text-base md:text-xl line-through">R$ {detailedProduct.get("price").toFixed(2)}</span>
-                      <span className="text-3xl md:text-4xl font-bold text-red-500">R$ {getActivePromo(detailedProduct).price.toFixed(2)}</span>
+                      <span className="text-3xl md:text-4xl font-bold text-texto">R$ {getActivePromo(detailedProduct).price.toFixed(2)}</span>
                     </div>
                   ) : (<span className="text-3xl md:text-4xl font-bold text-texto">R$ {detailedProduct.get("price").toFixed(2)}</span>)}
                 </div>
