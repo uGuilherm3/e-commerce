@@ -573,7 +573,7 @@ export default function Store({ currentUser, onLogout }) {
       {/* ========================================================================= */}
       {/* CABEÇALHO (NAVBAR) */}
       {/* ========================================================================= */}
-      <header className="bg-fundo/80 backdrop-blur-2xl transition-colors duration-500 sticky top-0 z-50">
+      <header className="bg-fundo backdrop-blur-md transition-colors duration-500 sticky top-0 z-50">
         <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-16 md:h-20 flex items-center justify-between gap-3 md:gap-4">
           
           <div className="flex-1 flex justify-start">
@@ -604,7 +604,7 @@ export default function Store({ currentUser, onLogout }) {
               {cartItemsCount > 0 && (<span className={`absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 ${currentView === "cart" ? "bg-card border-texto" : "bg-texto border-fundo"}`} />)}
             </button>
             
-            {/* BOTÃO DE PERFIL (Com Menu Restaurado no Hover/Click) */}
+            {/* BOTÃO DE PERFIL*/}
             <div 
               className="relative hidden md:block ml-1"
               onMouseEnter={() => setIsUserMenuOpen(true)}
@@ -612,10 +612,10 @@ export default function Store({ currentUser, onLogout }) {
             >
               <button 
                 onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} 
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-full transition-colors ${currentView !== "cart" ? "bg-texto text-card shadow-sm" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-full transition-colors ${currentView === "profile" ? "bg-texto text-card shadow-sm" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}
               >
                 {userAvatar ? (
-                  <img src={userAvatar} alt="Perfil" className={`w-5 h-5 rounded-full object-cover border ${currentView !== "cart" ? "border-card/30" : "border-borda"}`} />
+                  <img src={userAvatar} alt="Perfil" className={`w-7 h-7 rounded-full object-cover border ${currentView === "profile" ? "border-card/30" : "border-borda"}`} />
                 ) : (
                   <User className="w-5 h-5" />
                 )}
