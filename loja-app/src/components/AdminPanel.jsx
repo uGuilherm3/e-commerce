@@ -545,25 +545,41 @@ export default function AdminPanel({ onBack }) {
                                 </div>
                               </div>
                               
-                              {/* INPUT DE FOTO/LINK CORRIGIDO */}
+                              {/* INPUT DE FOTO/LINK CORRIGIDO DEFINITIVAMENTE */}
                               <div>
                                 <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Imagem de Fundo (Foto HD)</label>
                                 <div className="flex flex-col gap-2 p-2 bg-neutral-50 border border-neutral-200 rounded-lg">
-                                  <input type="file" accept="image/*" onChange={(e) => { handleUpdateBanner(banner.id, "file", e.target.files[0]); handleUpdateBanner(banner.id, "linkUrl", ""); }} className="w-full file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-white file:text-neutral-700 hover:file:bg-neutral-100 text-xs" />
+                                  
+                                  {/* UPLOAD DE ARQUIVO */}
+                                  <input 
+                                    type="file" 
+                                    accept="image/*" 
+                                    onChange={(e) => { 
+                                      const file = e.target.files[0];
+                                      setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, file: file, linkUrl: "" } : b)); 
+                                    }} 
+                                    className="w-full file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-white file:text-neutral-700 hover:file:bg-neutral-100 text-xs" 
+                                  />
+                                  
                                   <div className="flex items-center gap-2"><div className="flex-1 h-px bg-neutral-200"></div><span className="text-[9px] text-neutral-400 uppercase font-bold tracking-wider">OU COLOQUE O LINK</span><div className="flex-1 h-px bg-neutral-200"></div></div>
+                                  
+                                  {/* COLAR O LINK */}
                                   <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none"><LinkIcon className="w-3 h-3 text-neutral-400" /></div>
+                                    <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                                      <LinkIcon className="w-3 h-3 text-neutral-400" />
+                                    </div>
                                     <input 
                                       type="url" 
                                       placeholder="https://exemplo.com/foto.jpg" 
                                       value={banner.linkUrl || ""} 
                                       onChange={(e) => { 
-                                        handleUpdateBanner(banner.id, "linkUrl", e.target.value); 
-                                        handleUpdateBanner(banner.id, "file", null); 
+                                        const text = e.target.value;
+                                        setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, linkUrl: text, file: null } : b)); 
                                       }} 
                                       className="w-full pl-8 pr-2 py-1.5 text-xs bg-white border border-neutral-200 rounded-md focus:ring-1 focus:ring-neutral-900 focus:outline-none" 
                                     />
                                   </div>
+
                                 </div>
                               </div>
 
