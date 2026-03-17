@@ -393,16 +393,16 @@ export default function Store({ currentUser, onLogout }) {
     const hasDetails = p.get("hasDetails"); // <--- AQUI ESTÁ A CORREÇÃO! Faltava essa linha.
 
     return (
-      <div key={p.id} className={`group relative overflow-hidden rounded-[24px] md:rounded-[32px] bg-card shadow-sm ${!isOutOfStock ? 'cursor-pointer' : ''} ${isFullWidth ? 'col-span-1 md:col-span-2 aspect-[4/3] md:aspect-[21/9]' : 'col-span-1 aspect-square md:aspect-[4/5]'}`}>
+      <div key={p.id} className={`group relative overflow-hidden rounded-[24px] md:rounded-[32px] bg-card shadow-sm ${!isOutOfStock ? 'cursor-pointer' : ''} ${isFullWidth ? 'col-span-1 md:col-span-2 aspect-[4/3] md:aspect-[7/2]' : 'col-span-1 aspect-square md:aspect-[7/5]'}`}>
         {!isOutOfStock && (<div className="absolute inset-0 z-10" onClick={(e) => { e.stopPropagation(); openProductDetails(p); }} />)}
         
-        <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
+        <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-top ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         
         <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg/30 backdrop-blur-md rounded-full text-texto hover:bg-white/30 transition-colors duration-300 z-20 shadow-sm">
           <Heart className="w-4 h-4 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
         </button>
 
-        {isOutOfStock && <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-black/60 backdrop-blur-sm text-white text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider z-20 shadow-lg">Esgotado</div>}
+        {isOutOfStock && <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-black/60 backdrop-blur-md text-white text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider z-20 shadow-lg">Esgotado</div>}
         
         {/* SELO PREMIUM NO LUGAR DO DETALHES */}
         {hasDetails && !isOutOfStock && (
@@ -411,7 +411,7 @@ export default function Store({ currentUser, onLogout }) {
           </div>
         )}
 
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
         
         <div className="absolute inset-x-0 bottom-0 p-5 md:p-10 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-8 group-hover:translate-y-0 z-20 pointer-events-none">
           <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3">
@@ -443,7 +443,7 @@ export default function Store({ currentUser, onLogout }) {
 
     return (
       <div key={p.id} className="relative shrink-0 w-[80vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-none snap-center pb-6 md:pb-8 pt-2">
-        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group relative aspect-[3/4] w-full overflow-hidden rounded-[24px] md:rounded-[32px] border border-borda shadow-sm transition-shadow duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
+        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group relative aspect-[3/4] w-full overflow-hidden rounded-[24px] md:rounded-[32px] shadow-sm transition-shadow duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
           
           <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
           
@@ -465,7 +465,7 @@ export default function Store({ currentUser, onLogout }) {
           {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
 
           <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
-          <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-card via-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-texto/30 via-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
           <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
             <span className="text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-texto-sec drop-shadow-sm">{p.get("category")}</span>
@@ -549,7 +549,7 @@ export default function Store({ currentUser, onLogout }) {
           
           {/* SELO PREMIUM NO LUGAR DO DETALHES */}
           {hasDetails && !isOutOfStock && (
-            <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-white/30 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+            <div className="absolute top-3 left-3 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
               <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> Premium
             </div>
           )}
@@ -752,7 +752,7 @@ export default function Store({ currentUser, onLogout }) {
                       <div className="flex flex-col items-center text-center mb-8 md:mb-10 gap-2 md:gap-3 px-4">
                         <Timer className="w-6 h-6 md:w-8 md:h-8 text-texto mb-1" />
                         <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif italic text-texto break-words">Ofertas Limitadas</h2>
-                        <p className="text-sm md:text-base text-texto-sec max-w-xl">Peças exclusivas com descontos especiais.</p>
+                        <p className="text-sm md:text-base text-texto-sec max-w-xl mb-5">Peças exclusivas com descontos especiais.</p>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
                         {promoProducts.map((p, index) => renderMosaicPromoCard(p, index))}
