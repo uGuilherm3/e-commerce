@@ -1,10 +1,33 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import Parse from "../parseSetup";
 import { Search, LogOut, ShoppingBag, X, Plus, Minus, Trash2, CheckCircle, Loader2, User, Package, Settings, Instagram, Facebook, Twitter, Timer, Menu, CreditCard, QrCode, Truck, MessageCircle, Heart, TrendingUp, Sun, Moon, ArrowLeft, Star, Sparkles, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function Store({ currentUser, onLogout }) {
+// =========================================
+// COMPONENTE ISOLADO PARA O RELÓGIO (ALTA PERFORMANCE)
+// O relógio atualiza só aqui dentro, sem travar a loja inteira!
+// =========================================
+const PromoTimer = ({ endsAt }) => {
+  const [now, setNow] = useState(new Date());
   
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const total = Date.parse(endsAt) - Date.parse(now);
+  if (total <= 0) return <span className="text-white/90 font-bold text-[10px] tracking-widest uppercase">Encerrada</span>;
+  
+  const days = Math.floor(total / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
+  const minutes = Math.floor((total / 1000 / 60) % 60);
+  const seconds = Math.floor((total / 1000) % 60);
+  
+  if (days > 0) return <span className="text-white/90 font-bold text-[10px] tracking-widest uppercase">Termina em {days}d {hours}h</span>;
+  return <span className="text-white/90 font-bold text-[10px] tracking-widest uppercase">Termina em {hours}h {minutes}m {seconds}s</span>;
+};
+
+export default function Store({ currentUser, onLogout }) {
   const activeUser = Parse.User.current();
 
   const [products, setProducts] = useState([]);
@@ -12,7 +35,6 @@ export default function Store({ currentUser, onLogout }) {
   const [selectedCategory, setSelectedCategory] = useState("Tudo");
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [storeSettings, setStoreSettings] = useState(null);
-  const [currentTime, setCurrentTime] = useState(new Date());
 
   const [cart, setCart] = useState([]);
   const [checkoutStep, setCheckoutStep] = useState("cart"); 
@@ -46,10 +68,9 @@ export default function Store({ currentUser, onLogout }) {
   const [newReviewComment, setNewReviewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-  // CARROSSEL E ROLAGEM SUAVE
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
 
-  const scrollToSection = (sectionId) => {
+  const scrollToSection = useCallback((sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
       const headerOffset = 80; 
@@ -57,7 +78,7 @@ export default function Store({ currentUser, onLogout }) {
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
       window.scrollTo({ top: offsetPosition, behavior: "smooth" });
     }
-  };
+  }, []);
 
   const [isDarkMode, setIsDarkMode] = useState(() => {
     return localStorage.getItem("theme") === "dark" || 
@@ -72,8 +93,6 @@ export default function Store({ currentUser, onLogout }) {
   useEffect(() => {
     fetchProducts();
     fetchStoreSettings();
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -146,12 +165,12 @@ export default function Store({ currentUser, onLogout }) {
     finally { setIsSavingProfile(false); setAvatarFile(null); }
   };
 
-  const showToast = (message) => {
+  const showToast = useCallback((message) => {
     setToast({ show: true, message });
     setTimeout(() => setToast({ show: false, message: "" }), 3000);
-  };
+  }, []);
 
-  const toggleFavorite = async (productId, e) => {
+  const toggleFavorite = useCallback(async (productId, e) => {
     e.stopPropagation(); 
     const safeUser = Parse.User.current();
     if (!safeUser) { showToast("Faça login para salvar!"); return; }
@@ -165,27 +184,17 @@ export default function Store({ currentUser, onLogout }) {
     }
     setFavorites(newFavorites);
     try { await safeUser.save(); } catch (error) {}
-  };
+  }, [favorites, showToast]);
 
-  const getActivePromo = (product) => {
+  const getActivePromo = useCallback((product) => {
     const discountPrice = product.get("discountPrice");
     const discountEndsAt = product.get("discountEndsAt");
-    if (discountPrice && discountEndsAt && discountEndsAt > currentTime) {
+    // Agora olha pro tempo real apenas quando a função roda, sem re-renderizar a loja a cada 1s
+    if (discountPrice && discountEndsAt && discountEndsAt > new Date()) {
       return { isActive: true, price: discountPrice, endsAt: discountEndsAt };
     }
     return { isActive: false, price: product.get("price") };
-  };
-
-  const formatTimeLeft = (endTime) => {
-    const total = Date.parse(endTime) - Date.parse(currentTime);
-    if (total <= 0) return null;
-    const days = Math.floor(total / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
-    const minutes = Math.floor((total / 1000 / 60) % 60);
-    const seconds = Math.floor((total / 1000) % 60);
-    if (days > 0) return `${days}d ${hours}h`;
-    return `${hours}h ${minutes}m ${seconds}s`;
-  };
+  }, []);
 
   const handleSubscribeNewsletter = async (e) => {
     e.preventDefault();
@@ -240,33 +249,33 @@ export default function Store({ currentUser, onLogout }) {
     finally { setIsSubmittingReview(false); }
   };
 
-  const handleAddToCartClick = (product, e = null) => {
+  const handleAddToCartClick = useCallback((product, e = null) => {
     if (e) e.stopPropagation(); 
     const variants = product.get("variants") || [];
     if (variants.length > 0) { setQuickAdd({ isOpen: true, product, selectedVariant: variants[0] }); } 
     else { processAddToCart(product, null); }
-  };
+  }, []);
 
-  const openProductDetails = (product) => {
+  const openProductDetails = useCallback((product) => {
     if (!product) return;
     const variants = product.get("variants") || [];
     setDetailedVariant(variants.length > 0 ? variants[0] : "");
     setDetailedProduct(product);
     setNewReviewRating(5); setNewReviewComment(""); setProductReviews([]);
     fetchReviews(product);
-  };
+  }, []);
 
-  const processAddToCart = (product, variant) => {
+  const processAddToCart = useCallback((product, variant) => {
     const stock = product.get("stock") || 0;
     if (stock <= 0) { showToast("Produto esgotado!"); return; }
-    const totalOfThisProductInCart = cart.filter(item => item.product.id === product.id).reduce((sum, item) => sum + item.quantity, 0);
-    if (totalOfThisProductInCart >= stock) {
-      showToast(`Temos apenas ${stock} unidades!`);
-      setQuickAdd({ isOpen: false, product: null, selectedVariant: "" });
-      setDetailedProduct(null);
-      return;
-    }
+    
     setCart((prevCart) => {
+      const totalOfThisProductInCart = prevCart.filter(item => item.product.id === product.id).reduce((sum, item) => sum + item.quantity, 0);
+      if (totalOfThisProductInCart >= stock) {
+        showToast(`Temos apenas ${stock} unidades!`);
+        return prevCart;
+      }
+      
       const existingItem = prevCart.find(item => item.product.id === product.id && item.variant === variant);
       if (existingItem) { return prevCart.map(item => (item.product.id === product.id && item.variant === variant) ? { ...item, quantity: item.quantity + 1 } : item); }
       return [...prevCart, { product, quantity: 1, variant }];
@@ -274,9 +283,9 @@ export default function Store({ currentUser, onLogout }) {
     setQuickAdd({ isOpen: false, product: null, selectedVariant: "" });
     setDetailedProduct(null); 
     showToast(`${product.get("name")} adicionado!`);
-  };
+  }, [showToast]);
 
-  const updateQuantity = (productId, variant, delta) => {
+  const updateQuantity = useCallback((productId, variant, delta) => {
     setCart((prevCart) => prevCart.map(item => {
       if (item.product.id === productId && item.variant === variant) {
         const newQuantity = item.quantity + delta;
@@ -284,12 +293,36 @@ export default function Store({ currentUser, onLogout }) {
       }
       return item;
     }));
-  };
+  }, []);
 
-  const removeFromCart = (productId, variant) => setCart((prevCart) => prevCart.filter(item => !(item.product.id === productId && item.variant === variant)));
+  const removeFromCart = useCallback((productId, variant) => {
+    setCart((prevCart) => prevCart.filter(item => !(item.product.id === productId && item.variant === variant)));
+  }, []);
 
-  const cartTotal = cart.reduce((total, item) => total + (getActivePromo(item.product).price * item.quantity), 0);
-  const cartItemsCount = cart.reduce((count, item) => count + item.quantity, 0);
+  // =========================================
+  // OTIMIZAÇÃO: LISTAS PESADAS
+  // =========================================
+  const normalizeText = (text) => (text || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return [];
+    const queryRaw = normalizeText(searchQuery);
+    const searchTerms = queryRaw.split(" ").filter(term => term.length > 0);
+    return products.filter((p) => {
+      const searchableText = `${normalizeText(p.get("name"))} ${normalizeText(p.get("category"))} ${normalizeText(p.get("description"))} ${(p.get("variants") || []).map(normalizeText).join(" ")}`;
+      return searchTerms.every(term => searchableText.includes(term) || searchableText.includes(term.endsWith('s') ? term.slice(0, -1) : term));
+    });
+  }, [products, searchQuery]);
+
+  const promoProducts = useMemo(() => products.filter(p => getActivePromo(p).isActive), [products, getActivePromo]);
+  const bestSellers = useMemo(() => [...products].sort((a, b) => (b.get("salesCount") || 0) - (a.get("salesCount") || 0)).slice(0, 5), [products]);
+  const newArrivals = useMemo(() => [...products].sort((a, b) => b.createdAt > a.createdAt ? 1 : -1).slice(0, 4), [products]);
+  const categoriesList = useMemo(() => ["Tudo", ...new Set(products.map(p => p.get("category")).filter(Boolean))], [products]);
+  const catalogProducts = useMemo(() => products.filter((p) => selectedCategory === "Tudo" || p.get("category") === selectedCategory), [products, selectedCategory]);
+  const favoriteProducts = useMemo(() => products.filter(p => favorites.includes(p.id)), [products, favorites]);
+
+  const cartTotal = useMemo(() => cart.reduce((total, item) => total + (getActivePromo(item.product).price * item.quantity), 0), [cart, getActivePromo]);
+  const cartItemsCount = useMemo(() => cart.reduce((count, item) => count + item.quantity, 0), [cart]);
 
   const submitFinalCheckout = async () => {
     setCheckoutStep("processing");
@@ -342,26 +375,6 @@ export default function Store({ currentUser, onLogout }) {
 
   const handleCopyPix = () => { if (pixData?.qrCode) { navigator.clipboard.writeText(pixData.qrCode); showToast("Código copiado!"); } };
 
-  // =========================================
-  // LISTAS E VARIÁVEIS
-  // =========================================
-  const normalizeText = (text) => (text || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-
-  const searchResults = products.filter((p) => {
-    if (!searchQuery.trim()) return false;
-    const queryRaw = normalizeText(searchQuery);
-    const searchTerms = queryRaw.split(" ").filter(term => term.length > 0);
-    const searchableText = `${normalizeText(p.get("name"))} ${normalizeText(p.get("category"))} ${normalizeText(p.get("description"))} ${(p.get("variants") || []).map(normalizeText).join(" ")}`;
-    return searchTerms.every(term => searchableText.includes(term) || searchableText.includes(term.endsWith('s') ? term.slice(0, -1) : term));
-  });
-
-  const promoProducts = products.filter(p => getActivePromo(p).isActive);
-  const bestSellers = [...products].sort((a, b) => (b.get("salesCount") || 0) - (a.get("salesCount") || 0)).slice(0, 5);
-  const newArrivals = [...products].sort((a, b) => b.createdAt > a.createdAt ? 1 : -1).slice(0, 4);
-  const categoriesList = ["Tudo", ...new Set(products.map(p => p.get("category")).filter(Boolean))];
-  const catalogProducts = products.filter((p) => selectedCategory === "Tudo" || p.get("category") === selectedCategory);
-  const favoriteProducts = products.filter(p => favorites.includes(p.id));
-
   const tabVariants = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }, exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: "easeIn" } } };
 
   const bannersArray = storeSettings?.get("banners") || [{ imageUrl: storeSettings?.get("bannerImageUrl") || "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop", tag: storeSettings?.get("bannerTag") || "Novidades", title: storeSettings?.get("bannerTitle") || "Coleção Essência", desc: storeSettings?.get("bannerDesc") || "Descubra o frescor.", btn: storeSettings?.get("bannerBtn") || "Descobrir Agora", target: storeSettings?.get("bannerTarget") || "lancamentos" }];
@@ -371,71 +384,73 @@ export default function Store({ currentUser, onLogout }) {
   const infoBannerBtn = storeSettings?.get("infoBannerBtn") !== undefined ? storeSettings.get("infoBannerBtn") : "Explorar";
   const infoBannerImageUrl = storeSettings?.get("infoBannerImageUrl") || "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop";
 
-  // Sincroniza a barra de progresso dourada com os slides
   useEffect(() => {
     if (bannersArray.length <= 1) return;
     const interval = setInterval(() => {
       setCurrentBannerIndex((prev) => (prev + 1) % bannersArray.length);
     }, 5000);
-    // Agora o timer reinicia se o usuário clicar na barra manualmente
     return () => clearInterval(interval);
-  }, [bannersArray.length, currentBannerIndex]);
+  }, [bannersArray.length]);
+
 
   // =========================================
-  // CARDS DE PRODUTO (SEM ZOOM / FLAT DESIGN)
+  // CARDS DE PRODUTO 
   // =========================================
   
-  const renderMosaicPromoCard = (p, index) => {
+  /* Ofertas Limitadas (Mosaico Restaurado e Redimensionado) */
+  const renderMosaicPromoCard = useCallback((p, index) => {
     const isOutOfStock = p.get("stock") <= 0;
     const promo = getActivePromo(p);
     const isFav = favorites.includes(p.id);
+    const hasDetails = p.get("hasDetails");
+    // Lógica do Mosaico restaurada!
     const isFullWidth = index % 3 === 0;
-    const hasDetails = p.get("hasDetails"); // <--- AQUI ESTÁ A CORREÇÃO! Faltava essa linha.
 
     return (
-      <div key={p.id} className={`group relative overflow-hidden rounded-[24px] md:rounded-[32px] bg-card shadow-sm ${!isOutOfStock ? 'cursor-pointer' : ''} ${isFullWidth ? 'col-span-1 md:col-span-2 aspect-[4/3] md:aspect-[7/2]' : 'col-span-1 aspect-square md:aspect-[7/5]'}`}>
+      // Aspect Ratio muito mais elegante que antes (16/9 e 4/5)
+      <div key={p.id} className={`group relative overflow-hidden rounded-[24px] md:rounded-[32px] bg-card shadow-sm ${!isOutOfStock ? 'cursor-pointer' : ''} ${isFullWidth ? 'col-span-1 md:col-span-2 lg:col-span-2 aspect-[4/3] md:aspect-[16/9]' : 'col-span-1 aspect-square md:aspect-[4/5]'}`}>
         {!isOutOfStock && (<div className="absolute inset-0 z-10" onClick={(e) => { e.stopPropagation(); openProductDetails(p); }} />)}
         
         <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-top ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         
-        <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg/30 backdrop-blur-md rounded-full text-texto hover:bg-white/30 transition-colors duration-300 z-20 shadow-sm">
+        <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-white/40 backdrop-blur-md rounded-full text-white hover:bg-white/60 transition-colors duration-300 z-20 shadow-sm">
           <Heart className="w-4 h-4 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
         </button>
 
         {isOutOfStock && <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-black/60 backdrop-blur-md text-white text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider z-20 shadow-lg">Esgotado</div>}
         
-        {/* SELO PREMIUM NO LUGAR DO DETALHES */}
         {hasDetails && !isOutOfStock && (
-          <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-white/30 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+          <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-white/90 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
             <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
           </div>
         )}
 
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none z-10" />
+        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 pointer-events-none z-10" />
         
-        <div className="absolute inset-x-0 bottom-0 p-5 md:p-10 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-8 group-hover:translate-y-0 z-20 pointer-events-none">
+        <div className="absolute inset-x-0 bottom-0 p-5 md:p-8 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-8 group-hover:translate-y-0 z-20 pointer-events-none">
           <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3">
             <Timer className="w-4 h-4 md:w-5 md:h-5 text-white/90" />
-            <span className="text-white/90 font-bold text-[10px] md:text-xs tracking-widest uppercase">Termina em {formatTimeLeft(promo.endsAt)}</span>
+            <PromoTimer endsAt={promo.endsAt} />
           </div>
-          <h3 className="font-serif italic text-3xl sm:text-4xl md:text-5xl text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 break-words">{p.get("name")}</h3>
+          <h3 className="font-serif italic text-2xl sm:text-3xl md:text-4xl text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 break-words">{p.get("name")}</h3>
           
           <div className="flex items-end justify-between mt-2 md:mt-4 pointer-events-auto">
             <div className="flex flex-col drop-shadow-md min-w-0 pr-2">
               <span className="text-xs md:text-sm line-through text-white/60 font-normal mb-0.5 truncate">De R$ {p.get("price").toFixed(2)}</span>
-              <span className="font-bold text-white text-2xl md:text-3xl truncate">R$ {promo.price.toFixed(2)}</span>
+              <span className="font-bold text-white text-xl md:text-3xl truncate">R$ {promo.price.toFixed(2)}</span>
             </div>
             
-            <button onClick={(e) => handleAddToCartClick(p, e)} disabled={isOutOfStock} className="shrink-0 h-10 md:h-14 px-5 md:px-8 text-sm md:text-base bg-white text-neutral-900 font-bold rounded-full flex items-center justify-center shadow-lg hover:bg-neutral-200 transition-colors duration-300 disabled:opacity-50">
+            <button onClick={(e) => handleAddToCartClick(p, e)} disabled={isOutOfStock} className="shrink-0 h-10 md:h-12 px-5 md:px-8 text-sm md:text-base bg-white text-neutral-900 font-bold rounded-full flex items-center justify-center shadow-lg hover:bg-neutral-200 transition-colors duration-300 disabled:opacity-50">
               {isOutOfStock ? "Esgotado" : "Adicionar"}
             </button>
           </div>
         </div>
       </div>
     );
-  };
+  }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
-  const renderNewArrivalCard = (p) => {
+  /* Lançamentos */
+  const renderNewArrivalCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
     const promo = getActivePromo(p);
     const isFav = favorites.includes(p.id);
@@ -450,30 +465,29 @@ export default function Store({ currentUser, onLogout }) {
           <div className="absolute top-4 left-4 md:top-5 md:left-5 flex items-center gap-2 z-30 pointer-events-none">
             <div className="bg-texto text-card text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md">Novo</div>
             
-            {/* SELO PREMIUM NO LUGAR DO DETALHES */}
             {hasDetails && !isOutOfStock && (
-              <div className="bg/30 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <div className="bg-white/90 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
               </div>
             )}
           </div>
 
-          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/30 transition-colors duration-300 z-30 shadow-sm">
+          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-white/40 backdrop-blur-md rounded-full text-white hover:bg-white/60 transition-colors duration-300 z-30 shadow-sm">
             <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
           </button>
 
           {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
 
           <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
-          <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-texto/30 via-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+          <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
           <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
-            <span className="text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-texto-sec drop-shadow-sm">{p.get("category")}</span>
-            <h3 className="font-serif italic text-2xl sm:text-3xl text-texto line-clamp-1 drop-shadow-sm">{p.get("name")}</h3>
+            <span className="text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-white/80 drop-shadow-sm">{p.get("category")}</span>
+            <h3 className="font-serif italic text-2xl sm:text-3xl text-white line-clamp-1 drop-shadow-sm">{p.get("name")}</h3>
             <div className="flex items-center gap-2 mt-1 pointer-events-auto drop-shadow-sm">
-              {promo.isActive ? (<><span className="text-xs md:text-sm line-through text-texto-sec pr-1">R$ {p.get("price").toFixed(2)}</span><span className="font-bold text-texto text-xl sm:text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-texto text-xl sm:text-2xl">R$ {p.get("price").toFixed(2)}</span>)}
+              {promo.isActive ? (<><span className="text-xs md:text-sm line-through text-white/70 pr-1">R$ {p.get("price").toFixed(2)}</span><span className="font-bold text-white text-xl sm:text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-white text-xl sm:text-2xl">R$ {p.get("price").toFixed(2)}</span>)}
             </div>
-            <button onClick={(e) => handleAddToCartClick(p, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-12 md:h-14 text-sm md:text-base bg-texto text-card font-bold rounded-xl md:rounded-2xl flex items-center justify-center hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 gap-2 shadow-lg">
+            <button onClick={(e) => handleAddToCartClick(p, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-12 md:h-14 text-sm md:text-base bg-white text-neutral-900 font-bold rounded-xl md:rounded-2xl flex items-center justify-center hover:bg-neutral-200 transition-colors duration-300 disabled:opacity-50 gap-2 shadow-lg">
               {isOutOfStock ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Plus className="w-5 h-5 md:w-6 md:h-6" />}
               {isOutOfStock ? "Esgotado" : "Adicionar à sacola"}
             </button>
@@ -481,9 +495,10 @@ export default function Store({ currentUser, onLogout }) {
         </div>
       </div>
     );
-  };
+  }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
-  const renderBestSellerCard = (p) => {
+  /* Mais Desejados */
+  const renderBestSellerCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
     const promo = getActivePromo(p);
     const isFav = favorites.includes(p.id);
@@ -491,19 +506,18 @@ export default function Store({ currentUser, onLogout }) {
 
     return (
       <div key={p.id} className="relative shrink-0 w-[80vw] max-w-[280px] sm:max-w-[320px] md:w-full md:max-w-none snap-center pb-6 md:pb-8 pt-2">
-        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group w-full aspect-[3/4] relative rounded-[24px] md:rounded-[32px] overflow-hidden border border-borda bg-card shadow-sm ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
+        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group w-full aspect-[3/4] relative rounded-[24px] md:rounded-[32px] overflow-hidden bg-card shadow-sm ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
           
           <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
           
-          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg/30 backdrop-blur-md rounded-full text-texto hover:bg-white/30 transition-colors duration-300 z-20 shadow-sm">
+          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-white/40 backdrop-blur-md rounded-full text-white hover:bg-white/60 transition-colors duration-300 z-20 shadow-sm">
             <Heart className="w-4 h-4 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
           </button>
 
           {isOutOfStock && <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-black/60 backdrop-blur-sm text-white text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider z-20 shadow-lg">Esgotado</div>}
           
-          {/* SELO PREMIUM NO LUGAR DO DETALHES */}
           {hasDetails && !isOutOfStock && (
-            <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-white/30 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+            <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-white/90 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
               <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
             </div>
           )}
@@ -525,9 +539,10 @@ export default function Store({ currentUser, onLogout }) {
         </div>
       </div>
     );
-  };
+  }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
-  const renderProductCard = (p) => {
+  /* Catálogo Geral */
+  const renderProductCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
     const variants = p.get("variants") || [];
     const isFav = favorites.includes(p.id);
@@ -541,15 +556,14 @@ export default function Store({ currentUser, onLogout }) {
           
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />
           
-          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-3 right-3 md:top-4 md:right-4 p-2.5 bg-card/30 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
+          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-3 right-3 md:top-4 md:right-4 p-2.5 bg-card/80 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
             <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
           </button>
 
           {isOutOfStock && <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-card/90 backdrop-blur-sm text-texto text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-3 md:py-1.5 rounded-full uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
           
-          {/* SELO PREMIUM NO LUGAR DO DETALHES */}
           {hasDetails && !isOutOfStock && (
-            <div className="absolute top-3 left-3 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+            <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-white/90 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
               <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> Premium
             </div>
           )}
@@ -569,15 +583,13 @@ export default function Store({ currentUser, onLogout }) {
         </div>
       </div>
     );
-  };
+  }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
   return (
     <div className="min-h-screen bg-fundo transition-colors duration-500 font-sans relative flex flex-col text-texto">
       
-      {/* ========================================================================= */}
       {/* CABEÇALHO (NAVBAR) */}
-      {/* ========================================================================= */}
-      <header className="bg-fundo backdrop-blur-md transition-colors duration-500 sticky top-0 z-50">
+      <header className="bg-fundo/80 backdrop-blur-2xl border-b border-borda transition-colors duration-500 sticky top-0 z-50">
         <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-16 md:h-20 flex items-center justify-between gap-3 md:gap-4">
           
           <div className="flex-1 flex justify-start">
@@ -608,24 +620,10 @@ export default function Store({ currentUser, onLogout }) {
               {cartItemsCount > 0 && (<span className={`absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 ${currentView === "cart" ? "bg-card border-texto" : "bg-texto border-fundo"}`} />)}
             </button>
             
-            {/* BOTÃO DE PERFIL*/}
-            <div 
-              className="relative hidden md:block ml-1"
-              onMouseEnter={() => setIsUserMenuOpen(true)}
-              onMouseLeave={() => setIsUserMenuOpen(false)}
-            >
-              <button 
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} 
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-full transition-colors ${currentView === "profile" ? "bg-texto text-card shadow-sm" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}
-              >
-                {userAvatar ? (
-                  <img src={userAvatar} alt="Perfil" className={`w-7 h-7 rounded-full object-cover border ${currentView === "profile" ? "border-card/30" : "border-borda"}`} />
-                ) : (
-                  <User className="w-5 h-5" />
-                )}
-                <span className="text-sm font-medium truncate max-w-[150px]">
-                  {activeUser?.get("name") ? `Olá, ${activeUser.get("name").split(" ")[0]}` : "Entrar"}
-                </span>
+            <div className="relative hidden md:block ml-1" onMouseEnter={() => setIsUserMenuOpen(true)} onMouseLeave={() => setIsUserMenuOpen(false)}>
+              <button onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} className={`flex items-center gap-2 px-3 py-2.5 rounded-full transition-colors ${currentView === "profile" ? "bg-texto text-card shadow-sm" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}>
+                {userAvatar ? (<img src={userAvatar} alt="Perfil" className={`w-6 h-6 rounded-full object-cover border ${currentView === "profile" ? "border-card/30" : "border-borda"}`} />) : (<User className="w-5 h-5" />)}
+                <span className="text-sm font-medium truncate max-w-[150px]">{activeUser?.get("name") ? `Olá, ${activeUser.get("name").split(" ")[0]}` : "Entrar"}</span>
               </button>
 
               {isUserMenuOpen && (
@@ -701,7 +699,7 @@ export default function Store({ currentUser, onLogout }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 mt-6 md:mt-3 space-y-12 md:space-y-16 mb-20"
+              className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 mt-3 md:mt-5 space-y-12 md:space-y-16 mb-20"
             >
               {searchQuery ? (
                 <section>
@@ -713,26 +711,29 @@ export default function Store({ currentUser, onLogout }) {
                 </section>
               ) : (
                 <>
-                  <section className="relative w-full h-[60vh] sm:h-[70vh] md:h-[85vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm bg-fundo">
-                    {bannersArray.map((banner, index) => (
-                      <div key={index} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentBannerIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
-                        <img src={banner.imageUrl} alt={banner.title} className="absolute inset-0 w-full h-full object-cover object-center" />
-                        <div className="absolute inset-0 bg-black/30"></div>
+                  <section className="relative w-full h-[60vh] sm:h-[70vh] md:h-[85vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm bg-black">
+                    <AnimatePresence initial={false}>
+                      {/* Otimização: Transition mais leve sem dar scale/x na placa de vídeo */}
+                      <motion.div 
+                        key={currentBannerIndex}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1.0, ease: "easeInOut" }}
+                        className="absolute inset-0 z-10"
+                      >
+                        <img src={bannersArray[currentBannerIndex].imageUrl} alt={bannersArray[currentBannerIndex].title} className="absolute inset-0 w-full h-full object-cover object-center" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-black/10"></div>
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pb-12 md:pb-20">
-                          <span className="text-neutral-100/90 uppercase tracking-[0.3em] text-[10px] md:text-sm font-bold mb-2 md:mb-3 drop-shadow-sm">{banner.tag}</span>
-                          <h2 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-serif italic text-neutral-100 mb-4 md:mb-6 drop-shadow-md break-words">{banner.title}</h2>
-                          <p className="text-sm sm:text-base md:text-xl text-neutral-100/95 max-w-2xl mb-8 md:mb-10 drop-shadow-sm font-light px-4">{banner.desc}</p>
-                          <button onClick={() => scrollToSection(banner.target)} className="px-8 py-3 md:px-10 md:py-4 bg-neutral-100 text-neutral-900 font-bold rounded-full hover:bg-neutral-300 transition-colors duration-300 shadow-2xl text-sm md:text-lg">{banner.btn}</button>
+                          <motion.span initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }} className="text-white/90 uppercase tracking-[0.3em] text-[10px] md:text-sm font-bold mb-2 md:mb-3 drop-shadow-sm">{bannersArray[currentBannerIndex].tag}</motion.span>
+                          <motion.h2 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.6 }} className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-serif italic text-white mb-4 md:mb-6 drop-shadow-md break-words">{bannersArray[currentBannerIndex].title}</motion.h2>
+                          <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6, duration: 0.6 }} className="text-sm sm:text-base md:text-xl text-white/90 max-w-2xl mb-8 md:mb-10 drop-shadow-sm font-light px-4">{bannersArray[currentBannerIndex].desc}</motion.p>
+                          {bannersArray[currentBannerIndex].btn && (
+                            <motion.button initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.6 }} onClick={() => scrollToSection(bannersArray[currentBannerIndex].target)} className="px-8 py-3 md:px-10 md:py-4 bg-white text-neutral-900 font-bold rounded-full hover:bg-neutral-200 transition-colors duration-300 shadow-2xl text-sm md:text-lg">{bannersArray[currentBannerIndex].btn}</motion.button>
+                          )}
                         </div>
-                      </div>
-                    ))}
-                    {bannersArray.length > 1 && (
-                      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
-                        {bannersArray.map((_, idx) => (
-                          <button key={idx} onClick={() => setCurrentBannerIndex(idx)} className={`transition-colors duration-500 rounded-full ${idx === currentBannerIndex ? 'w-8 h-2 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/80'}`} />
-                        ))}
-                      </div>
-                    )}
+                      </motion.div>
+                    </AnimatePresence>
                   </section>
 
                   {newArrivals.length > 0 && (
@@ -748,13 +749,13 @@ export default function Store({ currentUser, onLogout }) {
                   )}
 
                   {promoProducts.length > 0 && (
-                    <section id="ofertas" className="mt-12 md:mt-16">
-                      <div className="flex flex-col items-center text-center mb-8 md:mb-10 gap-2 md:gap-3 px-4">
+                    <section id="ofertas" className="mt-12 md:mt-16 pt-4">
+                      <div className="flex flex-col items-center text-center mb-4 md:mb-6 gap-2 md:gap-3 px-4">
                         <Timer className="w-6 h-6 md:w-8 md:h-8 text-texto mb-1" />
                         <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif italic text-texto break-words">Ofertas Limitadas</h2>
                         <p className="text-sm md:text-base text-texto-sec max-w-xl mb-5">Peças exclusivas com descontos especiais.</p>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                         {promoProducts.map((p, index) => renderMosaicPromoCard(p, index))}
                       </div>
                     </section>
@@ -773,7 +774,6 @@ export default function Store({ currentUser, onLogout }) {
                   {infoBannerActive && (
                     <section className="mt-8 md:mt-24 mb-4">
                       <div className="relative w-full h-[35vh] md:h-[50vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group">
-                        {/* Imagem do InfoBanner agora SEM scale para manter o Flat Design */}
                         <img src={infoBannerImageUrl} alt={infoBannerTitle} loading="lazy" className="absolute inset-0 w-full h-full object-cover object-center" />
                         <div className="absolute inset-0 bg-black/40 transition-colors hover:bg-black/50 duration-500"></div>
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-10">
@@ -1134,17 +1134,15 @@ export default function Store({ currentUser, onLogout }) {
         </AnimatePresence>
       </div>
 
-      {/* ========================================================================= */}
-      {/* MINI-MODAL DE ADIÇÃO RÁPIDA (Escolher a cor ou modelo do produto) */}
-      {/* ========================================================================= */}
+      {/* MINI-MODAL DE ADIÇÃO RÁPIDA */}
       <AnimatePresence>
         {quickAdd.isOpen && quickAdd.product && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setQuickAdd({ isOpen: false, product: null, selectedVariant: "" })}>
             <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-card w-full max-w-sm rounded-3xl shadow-2xl p-6 border border-borda relative"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-card w-full max-w-sm rounded-3xl shadow-xl p-6 border border-borda relative"
               onClick={(e) => e.stopPropagation()}
             >
               <button onClick={() => setQuickAdd({ isOpen: false, product: null, selectedVariant: "" })} className="absolute top-4 right-4 p-2 bg-fundo hover:bg-borda rounded-full text-texto-sec hover:text-texto transition-colors"><X className="w-5 h-5" /></button>
@@ -1165,7 +1163,7 @@ export default function Store({ currentUser, onLogout }) {
                   <button 
                     key={v} 
                     onClick={() => setQuickAdd({ ...quickAdd, selectedVariant: v })} 
-                    className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border ${quickAdd.selectedVariant === v ? 'border-texto bg-texto text-card shadow-md' : 'border-borda bg-fundo text-texto-sec hover:border-texto hover:text-texto'}`}
+                    className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border ${quickAdd.selectedVariant === v ? 'border-texto bg-texto text-card shadow-md' : 'border-borda bg-fundo text-texto-sec hover:bg-texto/5 hover:text-texto'}`}
                   >
                     {v}
                   </button>
@@ -1183,14 +1181,12 @@ export default function Store({ currentUser, onLogout }) {
         )}
       </AnimatePresence>
 
-      {/* ========================================================================= */}
-      {/* MODAL GIGANTE DE DETALHES DO PRODUTO (PÁGINA SEPARADA DO PRODUTO)*/}
-      {/* ========================================================================= */}
+      {/* MODAL GIGANTE DE DETALHES DO PRODUTO */}
       <AnimatePresence>
         {detailedProduct && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-0 sm:p-4 md:p-6 lg:p-10 bg-black/30 backdrop-blur-md" onClick={() => setDetailedProduct(null)}>
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 30 }} transition={{ type: "spring", bounce: 0, duration: 0.6 }} className="bg-card w-full h-full max-w-[1400px] sm:rounded-[32px] md:rounded-[20px] overflow-hidden shadow-2xl flex flex-col md:flex-row relative transition-colors duration-500" onClick={(e) => e.stopPropagation()}>
-              <button onClick={() => setDetailedProduct(null)} className="hidden md:flex absolute top-6 right-6 lg:top-8 lg:right-8 z-20 p-3 lg:p-4 bg-fundo hover:bg-borda rounded-full transition-colors text-texto shadow-xl"><X className="w-5 h-5 lg:w-6 lg:h-6" /></button>
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-0 sm:p-4 md:p-6 lg:p-10 bg-black/90 backdrop-blur-xl" onClick={() => setDetailedProduct(null)}>
+            <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 40 }} transition={{ type: "spring", bounce: 0, duration: 0.5 }} className="bg-card w-full h-full max-w-[1400px] sm:rounded-[32px] md:rounded-[20px] overflow-hidden shadow-2xl flex flex-col md:flex-row relative transition-colors duration-500" onClick={(e) => e.stopPropagation()}>
+              <button onClick={() => setDetailedProduct(null)} className="hidden md:flex absolute top-6 right-6 lg:top-8 lg:right-8 z-20 p-3 lg:p-4 bg-fundo hover:bg-borda rounded-full transition-colors text-texto shadow-sm"><X className="w-5 h-5 lg:w-6 lg:h-6" /></button>
               
               <div className="w-full md:w-[50%] lg:w-[55%] h-[40vh] md:h-full bg-black relative shrink-0">
                 {(() => {
@@ -1198,19 +1194,31 @@ export default function Store({ currentUser, onLogout }) {
                   const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(mediaUrl);
                   return isVideo ? (<video src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />) : (<img src={mediaUrl} alt={detailedProduct.get("name")} className="w-full h-full object-cover" />);
                 })()}
-                <button onClick={() => setDetailedProduct(null)} className="absolute top-4 right-4 p-2.5 bg-card/50 backdrop-blur-md hover:bg-card rounded-full transition-colors md:hidden z-10 shadow-lg text-texto"><X className="w-5 h-5" /></button>
+                <button onClick={() => setDetailedProduct(null)} className="absolute top-4 right-4 p-2.5 bg-card/50 backdrop-blur-md hover:bg-card rounded-full transition-colors md:hidden z-10 shadow-sm text-texto"><X className="w-5 h-5" /></button>
               </div>
               
               <div className="w-full md:w-[50%] lg:w-[45%] p-6 sm:p-8 md:p-10 lg:p-12 flex flex-col flex-1 overflow-y-auto relative">
-                <div className="mb-4 md:mb-6"><span className="text-[10px] md:text-xs font-bold tracking-widest text-texto-sec uppercase">{detailedProduct.get("category") || "Premium"}</span></div>
+                
+                <div className="flex items-center gap-3 mb-4 md:mb-6">
+                  {detailedProduct.get("category") && (
+                    <span className="text-[10px] md:text-xs font-bold tracking-widest text-texto-sec uppercase">{detailedProduct.get("category")}</span>
+                  )}
+                  {detailedProduct.get("hasDetails") && (
+                    <span className="bg-amber-100 text-amber-700 text-[9px] md:text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider flex items-center gap-1.5 shadow-sm">
+                      <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> Premium
+                    </span>
+                  )}
+                </div>
                 
                 <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif italic text-texto mb-4 md:mb-6 leading-tight break-words pr-8 md:pr-12">{detailedProduct.get("name")}</h2>
-                                
+                
+                <button onClick={(e) => toggleFavorite(detailedProduct.id, e)} className="absolute top-6 right-6 lg:top-8 lg:right-8 p-2.5 md:p-3 bg-fundo rounded-full hover:bg-borda transition-colors hidden md:block"><Heart className="w-5 h-5 md:w-6 md:h-6 text-texto" fill={favorites.includes(detailedProduct.id) ? "currentColor" : "none"} strokeWidth={favorites.includes(detailedProduct.id) ? 0 : 2}/></button>
+                
                 <div className="mb-6 md:mb-8">
                   {getActivePromo(detailedProduct).isActive ? (
                     <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                       <span className="text-texto-sec text-base md:text-xl line-through">R$ {detailedProduct.get("price").toFixed(2)}</span>
-                      <span className="text-3xl md:text-4xl font-bold text-texto">R$ {getActivePromo(detailedProduct).price.toFixed(2)}</span>
+                      <span className="text-3xl md:text-4xl font-bold text-red-500">R$ {getActivePromo(detailedProduct).price.toFixed(2)}</span>
                     </div>
                   ) : (<span className="text-3xl md:text-4xl font-bold text-texto">R$ {detailedProduct.get("price").toFixed(2)}</span>)}
                 </div>
@@ -1222,13 +1230,12 @@ export default function Store({ currentUser, onLogout }) {
                     <p className="text-[10px] md:text-xs font-bold text-texto uppercase tracking-wider mb-3 md:mb-4">Escolha a Opção</p>
                     <div className="flex flex-wrap gap-2 md:gap-3">
                       {(detailedProduct.get("variants") || []).map(v => (
-                        <button key={v} onClick={() => setDetailedVariant(v)} className={`px-4 py-2 md:px-6 md:py-3 rounded-full text-xs md:text-sm font-bold transition-colors border ${detailedVariant === v ? 'border-texto bg-texto text-card shadow-md' : 'border-borda bg-card text-texto-sec hover:border-texto'}`}>{v}</button>
+                        <button key={v} onClick={() => setDetailedVariant(v)} className={`px-4 py-2 md:px-6 md:py-3 rounded-full text-xs md:text-sm font-bold transition-colors border ${detailedVariant === v ? 'border-texto bg-texto text-card shadow-md' : 'border-borda bg-card text-texto-sec hover:bg-texto/5 hover:text-texto'}`}>{v}</button>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* AVALIAÇÕES */}
                 <div className="mb-8 md:mb-10 border-t border-borda pt-6 md:pt-8">
                   <h3 className="text-sm md:text-base font-bold text-texto uppercase tracking-wider mb-4 md:mb-6">Avaliações Recentes</h3>
                   
@@ -1240,7 +1247,7 @@ export default function Store({ currentUser, onLogout }) {
                         <div key={review.id} className="bg-fundo p-4 rounded-xl md:rounded-2xl border border-borda flex flex-col">
                           <div className="flex items-center gap-1 mb-3">
                             {[1, 2, 3, 4, 5].map(star => (
-                              <Star key={star} className={`w-3 h-3 md:w-4 md:h-4 ${star <= review.get("rating") ? 'text-texto fill-texto' : 'text-texto/20'}`} />
+                              <Star key={star} className={`w-3 h-3 md:w-4 md:h-4 ${star <= review.get("rating") ? 'text-amber-500 fill-amber-500' : 'text-borda fill-borda'}`} />
                             ))}
                           </div>
                           <p className="text-sm text-texto mb-3 flex-1 italic">"{review.get("comment")}"</p>
@@ -1255,13 +1262,13 @@ export default function Store({ currentUser, onLogout }) {
                       <p className="text-xs font-bold text-texto mb-3">Deixe sua avaliação</p>
                       <div className="flex items-center gap-1 mb-4">
                         {[1, 2, 3, 4, 5].map(star => (
-                          <button type="button" key={star} onClick={() => setNewReviewRating(star)} className="focus:outline-none hover:opacity-70 transition-opacity">
-                            <Star className={`w-5 h-5 md:w-6 md:h-6 ${star <= newReviewRating ? 'text-texto fill-texto' : 'text-texto/20'}`} />
+                          <button type="button" key={star} onClick={() => setNewReviewRating(star)} className="focus:outline-none hover:scale-110 transition-transform">
+                            <Star className={`w-5 h-5 md:w-6 md:h-6 transition-colors ${star <= newReviewRating ? 'text-amber-500 fill-amber-500' : 'text-borda fill-borda'}`} />
                           </button>
                         ))}
                       </div>
                       <textarea required rows="2" value={newReviewComment} onChange={(e) => setNewReviewComment(e.target.value)} placeholder="O que achou deste produto?" className="w-full px-4 py-3 bg-card border border-borda text-sm text-texto rounded-xl focus:ring-2 focus:ring-texto focus:outline-none resize-none mb-3" />
-                      <button type="submit" disabled={isSubmittingReview} className="px-5 py-2.5 bg-btn text-btn-texto font-bold text-xs md:text-sm rounded-lg hover:opacity-90 transition-opacity duration-300 disabled:opacity-50">
+                      <button type="submit" disabled={isSubmittingReview} className="px-5 py-2.5 bg-btn text-btn-texto font-bold text-xs md:text-sm rounded-lg hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 shadow-sm">
                         {isSubmittingReview ? "Enviando..." : "Enviar Avaliação"}
                       </button>
                     </form>
