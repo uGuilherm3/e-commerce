@@ -72,7 +72,7 @@ export default function Store({ currentUser, onLogout }) {
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
-
+  
   const scrollToSection = useCallback((sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -388,6 +388,18 @@ export default function Store({ currentUser, onLogout }) {
   const infoBannerDesc = storeSettings?.get("infoBannerDesc") !== undefined ? storeSettings.get("infoBannerDesc") : "Não perca nossa coleção exclusiva por tempo limitado.";
   const infoBannerBtn = storeSettings?.get("infoBannerBtn") !== undefined ? storeSettings.get("infoBannerBtn") : "Explorar";
   const infoBannerImageUrl = storeSettings?.get("infoBannerImageUrl") || "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop";
+
+  // =========================================
+  // LAZY LOADING & PRELOAD DO CARROSSEL
+  // Baixa a próxima foto silenciosamente na memória
+  // =========================================
+  useEffect(() => {
+    if (bannersArray.length > 1) {
+      const nextIndex = (currentBannerIndex + 1) % bannersArray.length;
+      const img = new window.Image();
+      img.src = bannersArray[nextIndex].imageUrl;
+    }
+  }, [currentBannerIndex, bannersArray]);
 
   useEffect(() => {
     if (bannersArray.length <= 1) return;
@@ -734,18 +746,36 @@ export default function Store({ currentUser, onLogout }) {
               ) : (
                 <>
                   <section className="relative w-full h-[60vh] sm:h-[70vh] md:h-[85vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm bg-fundo">
-                    {bannersArray.map((banner, index) => (
-                      <div key={index} className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentBannerIndex ? 'opacity-100 z-10' : 'opacity-0 z-0'}`}>
-                        <img src={banner.imageUrl} alt={banner.title} className="absolute inset-0 w-full h-full object-cover object-center" />
+                    <AnimatePresence initial={false}>
+                      <motion.div 
+                        key={currentBannerIndex}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 1.0, ease: "easeInOut" }}
+                        className="absolute inset-0 z-10"
+                        style={{ willChange: "opacity" }} // ✅ A MÁGICA DA PLACA DE VÍDEO AQUI!
+                      >
+                        <img 
+                          src={bannersArray[currentBannerIndex].imageUrl} 
+                          alt={bannersArray[currentBannerIndex].title} 
+                          loading={currentBannerIndex === 0 ? "eager" : "lazy"}
+                          fetchPriority={currentBannerIndex === 0 ? "high" : "auto"}
+                          className="absolute inset-0 w-full h-full object-cover object-center" 
+                        />
                         <div className="absolute inset-0 bg-black/30"></div>
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pb-12 md:pb-20">
-                          <span className="text-neutral-100/90 uppercase tracking-[0.3em] text-[10px] md:text-sm font-bold mb-2 md:mb-3 drop-shadow-sm">{banner.tag}</span>
-                          <h2 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-serif italic text-neutral-100 mb-4 md:mb-6 drop-shadow-md break-words">{banner.title}</h2>
-                          <p className="text-sm sm:text-base md:text-xl text-neutral-100/95 max-w-2xl mb-8 md:mb-10 drop-shadow-sm font-light px-4">{banner.desc}</p>
-                          <button onClick={() => scrollToSection(banner.target)} className="px-8 py-3 md:px-10 md:py-4 bg-neutral-100 text-neutral-900 font-bold rounded-full hover:bg-neutral-300 transition-colors duration-300 shadow-2xl text-sm md:text-lg">{banner.btn}</button>
+                          {/* TEXTOS COM ANIMAÇÃO RESTAURADA */}
+                          <motion.span initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }} className="text-neutral-100/90 uppercase tracking-[0.3em] text-[10px] md:text-sm font-bold mb-2 md:mb-3 drop-shadow-sm">{bannersArray[currentBannerIndex].tag}</motion.span>
+                          <motion.h2 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.6 }} className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-serif italic text-neutral-100 mb-4 md:mb-6 drop-shadow-md break-words">{bannersArray[currentBannerIndex].title}</motion.h2>
+                          <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6, duration: 0.6 }} className="text-sm sm:text-base md:text-xl text-neutral-100/95 max-w-2xl mb-8 md:mb-10 drop-shadow-sm font-light px-4">{bannersArray[currentBannerIndex].desc}</motion.p>
+                          {bannersArray[currentBannerIndex].btn && (
+                            <motion.button initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.6 }} onClick={() => scrollToSection(bannersArray[currentBannerIndex].target)} className="px-8 py-3 md:px-10 md:py-4 bg-neutral-100 text-neutral-900 font-bold rounded-full hover:bg-neutral-300 transition-colors duration-300 shadow-2xl text-sm md:text-lg">{bannersArray[currentBannerIndex].btn}</motion.button>
+                          )}
                         </div>
-                      </div>
-                    ))}
+                      </motion.div>
+                    </AnimatePresence>
+                    
                     {bannersArray.length > 1 && (
                       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
                         {bannersArray.map((_, idx) => (
