@@ -43,11 +43,11 @@ function App() {
 
   return (
     <>
-      {/* O botão só vai ser renderizado (desenhado na tela) se isAdmin for verdadeiro */}
-      {isAdmin && (
-        <button 
-          onClick={() => setCurrentView("admin")} 
-          className="fixed bottom-6 right-6 bg-neutral-900 text-white px-6 py-3 rounded-full shadow-2xl font-medium hover:bg-neutral-800 transition z-50"
+      {/*BOTÃO DO PAINEL DE ADM*/}
+      {isAdmin && currentView !== "admin" && (
+        <button
+          onClick={() => setCurrentView("admin")}
+          className="fixed bottom-6 right-6 bg-neutral-900 text-white px-6 py-3 rounded-full shadow-2xl z-50"
         >
           Painel Admin
         </button>

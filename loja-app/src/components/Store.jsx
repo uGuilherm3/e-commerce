@@ -433,14 +433,14 @@ export default function Store({ currentUser, onLogout }) {
         
         <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-top ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         
-        <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-white/40 backdrop-blur-md rounded-full text-white hover:bg-white/60 transition-colors duration-300 z-20 shadow-sm">
+        <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 backdrop-blur-md rounded-full text-texto hover:bg-white/30 transition-colors duration-300 z-20 shadow-sm">
           <Heart className="w-4 h-4 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
         </button>
 
         {isOutOfStock && <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-black/60 backdrop-blur-md text-white text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider z-20 shadow-lg">Esgotado</div>}
         
         {hasDetails && !isOutOfStock && (
-          <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-white/90 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+          <div className="absolute top-4 left-4 md:top-5 md:left-5 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
             <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
           </div>
         )}
