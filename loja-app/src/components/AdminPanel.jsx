@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from "react";
 import Parse from "../parseSetup";
-import { ArrowLeft, Loader2, TrendingUp, DollarSign, Package, Calendar, Clock, ShoppingBag, Trash2, Link as LinkIcon, Image as ImageIcon, Plus, Wallet, BarChart, Activity, X } from "lucide-react";
+import { ArrowLeft, Loader2, TrendingUp, DollarSign, Package, Calendar, Clock, ShoppingBag, Trash2, Link as LinkIcon, Image as ImageIcon, Plus, Wallet, BarChart, Activity, X, Timer } from "lucide-react";
 
 const DEFAULT_PRODUCT_IMG = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop";
 const DEFAULT_INFO_BANNER_IMG = "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop";
 const DEFAULT_CAROUSEL_IMG = "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop";
+const DEFAULT_PROMO_BANNER_IMG = "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=2070&auto=format&fit=crop";
 
 export default function AdminPanel({ onBack }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -51,6 +52,13 @@ export default function AdminPanel({ onBack }) {
   const [currentInfoBannerUrl, setCurrentInfoBannerUrl] = useState(DEFAULT_INFO_BANNER_IMG);
   const [linkInfoBannerUrl, setLinkInfoBannerUrl] = useState(""); 
   const [savingSettings, setSavingSettings] = useState(false);
+
+  // 👇 NOVOS ESTADOS PARA O BANNER DE OFERTAS
+  const [promoBannerTitle, setPromoBannerTitle] = useState("");
+  const [promoBannerDesc, setPromoBannerDesc] = useState("");
+  const [promoBannerFile, setPromoBannerFile] = useState(null);
+  const [currentPromoBannerUrl, setCurrentPromoBannerUrl] = useState(DEFAULT_PROMO_BANNER_IMG);
+  const [linkPromoBannerUrl, setLinkPromoBannerUrl] = useState(""); 
 
   const availableCategories = [...new Set(products.flatMap(p => p.get("categories") || [p.get("category")]).filter(Boolean))];
 
@@ -139,6 +147,11 @@ export default function AdminPanel({ onBack }) {
         setInfoBannerDesc(s.get("infoBannerDesc") || "");
         setInfoBannerBtn(s.get("infoBannerBtn") || "");
         setCurrentInfoBannerUrl(s.get("infoBannerImageUrl") || DEFAULT_INFO_BANNER_IMG);
+        
+        // 👇 PUXANDO OS DADOS DO BANNER DE OFERTAS
+        setPromoBannerTitle(s.get("promoBannerTitle") || "");
+        setPromoBannerDesc(s.get("promoBannerDesc") || "");
+        setCurrentPromoBannerUrl(s.get("promoBannerImageUrl") || DEFAULT_PROMO_BANNER_IMG);
       }
     } catch (e) { console.error(e); }
   };
@@ -216,6 +229,13 @@ export default function AdminPanel({ onBack }) {
       s.set("infoBannerDesc", infoBannerDesc); s.set("infoBannerBtn", infoBannerBtn);
       if (infoBannerFile) { const f = new Parse.File("info", infoBannerFile); await f.save(); s.set("infoBannerImageUrl", f.url()); }
       else if (linkInfoBannerUrl.trim()) s.set("infoBannerImageUrl", linkInfoBannerUrl.trim());
+
+      // 👇 SALVANDO OS DADOS DO BANNER DE OFERTAS
+      s.set("promoBannerTitle", promoBannerTitle);
+      s.set("promoBannerDesc", promoBannerDesc);
+      if (promoBannerFile) { const f = new Parse.File("promo", promoBannerFile); await f.save(); s.set("promoBannerImageUrl", f.url()); }
+      else if (linkPromoBannerUrl.trim()) s.set("promoBannerImageUrl", linkPromoBannerUrl.trim());
+
       await s.save(); alert("Aparência da loja atualizada!"); fetchSettings();
     } catch (err) { alert(err.message); } finally { setSavingSettings(false); }
   };
@@ -583,6 +603,46 @@ export default function AdminPanel({ onBack }) {
                       ))}
                     </div>
                   </div>
+
+                  {/* 👇 NOVO: BANNER DE OFERTAS ESPECIAIS 👇 */}
+                  <div className="pt-10 border-t border-neutral-200">
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h2 className="text-2xl font-semibold mb-1 flex items-center gap-2">
+                          <Timer className="w-6 h-6 text-amber-500" /> Banner de Ofertas
+                        </h2>
+                        <p className="text-neutral-500 text-sm">Aparece automaticamente quando você cadastra produtos com "Preço Promocional".</p>
+                      </div>
+                    </div>
+                    
+                    <div className="w-full h-32 rounded-xl overflow-hidden relative shadow-sm border border-neutral-200 bg-neutral-900 mb-6">
+                      <img src={promoBannerFile ? URL.createObjectURL(promoBannerFile) : currentPromoBannerUrl} alt="Preview Ofertas" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                        <h3 className="text-xl font-serif italic text-white mb-1">{promoBannerTitle || "Ofertas Especiais"}</h3>
+                        <p className="text-[10px] text-white/80">{promoBannerDesc || "Uma seleção exclusiva de peças..."}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título da Sessão</label>
+                        <input type="text" value={promoBannerTitle} onChange={(e) => setPromoBannerTitle(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none text-sm" placeholder="Ex: Ofertas Especiais" />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Descrição</label>
+                        <textarea value={promoBannerDesc} onChange={(e) => setPromoBannerDesc(e.target.value)} rows="2" className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none resize-none text-sm" placeholder="Ex: Uma seleção exclusiva..." />
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Imagem de Fundo (Recomendado: Foto escura/sóbria)</label>
+                        <div className="flex flex-col gap-2 p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                          <input type="file" accept="image/*" onChange={(e) => {setPromoBannerFile(e.target.files[0]); setCurrentPromoBannerUrl(""); setLinkPromoBannerUrl("");}} className="w-full text-xs" />
+                          <div className="flex items-center gap-2"><div className="flex-1 h-px bg-neutral-200"></div><span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">OU LINK</span><div className="flex-1 h-px bg-neutral-200"></div></div>
+                          <input type="url" placeholder="https://..." value={linkPromoBannerUrl} onChange={(e) => {setLinkPromoBannerUrl(e.target.value); setPromoBannerFile(null);}} className="w-full px-3 py-2 text-sm bg-white border border-neutral-200 rounded-md outline-none" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* 👆 FIM DO NOVO BANNER DE OFERTAS 👆 */}
 
                   <div className="pt-10 border-t border-neutral-200">
                     <div className="flex justify-between items-start mb-2">
