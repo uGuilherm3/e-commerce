@@ -632,42 +632,79 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     const variants = p.get("variants") || [];
     const isFav = favorites.includes(p.id);
     const hasDetails = p.get("hasDetails");
+    const promo = getActivePromo(p);
     
     return (
-      <div key={p.id} className="group relative flex flex-col h-full">
-        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`aspect-[4/5] overflow-hidden rounded-[20px] md:rounded-[24px] bg-card mb-3 md:mb-4 relative border border-transparent hover:border-borda transition-colors ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
+      <div key={p.id} className="group relative flex flex-row sm:flex-col h-full bg-card sm:bg-transparent rounded-2xl sm:rounded-none p-3 sm:p-0 border border-borda sm:border-transparent shadow-sm sm:shadow-none gap-4 sm:gap-0">
+        
+        {/* IMAGEM (Esquerda no Celular, Topo no PC) */}
+        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`w-[110px] sm:w-full shrink-0 aspect-[4/5] overflow-hidden rounded-xl sm:rounded-[20px] md:rounded-[24px] bg-card sm:mb-3 md:mb-4 relative border border-transparent hover:border-borda transition-colors ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
           <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
           
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />
           
-          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-3 right-3 md:top-4 md:right-4 p-2.5 bg-card/30 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
-            <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 p-1.5 sm:p-2.5 bg-card/30 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
+            <Heart className="w-3 h-3 sm:w-4 sm:h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
           </button>
 
-          {isOutOfStock && <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-card/90 backdrop-blur-sm text-texto text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-3 md:py-1.5 rounded-full uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
+          {promo.isActive && !isOutOfStock && (
+            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 bg-black/70 backdrop-blur-sm text-white px-1.5 py-1 sm:px-2.5 sm:py-1 rounded-md flex items-center gap-1 z-20 shadow-sm">
+              <Timer className="hidden sm:block w-3 h-3" />
+              <span className="text-[8px] sm:text-[10px] uppercase font-bold tracking-widest"><PromoTimer endsAt={promo.endsAt} /></span>
+            </div>
+          )}
+
+          {isOutOfStock && <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 bg-card/90 backdrop-blur-sm text-texto text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-3 md:py-1.5 rounded-full uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
           
-          {hasDetails && !isOutOfStock && (
-            <div className="absolute top-3 left-3 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-              <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> Premium
+          {hasDetails && !isOutOfStock && !promo.isActive && (
+            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+              <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> <span className="hidden sm:inline">Premium</span>
             </div>
           )}
           
+          {/* BOTÃO HOVER (Aparece só no PC) */}
           {!isOutOfStock && (
-            <div className="absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4 translate-y-[120%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-auto">
+            <div className="hidden sm:block absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4 translate-y-[120%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-auto">
               <button onClick={(e) => handleAddToCartClick(p, e)} className="w-full bg-btn text-btn-texto font-bold py-3 md:py-4 text-sm md:text-base rounded-xl shadow-lg hover:opacity-90 transition-opacity duration-300 flex items-center justify-center gap-2">
                 <Plus className="w-4 h-4 md:w-5 md:h-5" /> Adicionar à sacola
               </button>
             </div>
           )}
         </div>
-        <h3 className="font-medium text-sm md:text-base text-texto line-clamp-2">{p.get("name")}</h3>
-        <div className="flex justify-between items-end mt-1">
-          <p className="text-texto-sec text-sm md:text-base">R$ {p.get("price").toFixed(2)}</p>
-          {variants.length > 0 && <span className="text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 md:px-2 py-0.5 rounded-md shrink-0">{variants.length} Cores</span>}
+        
+        {/* INFORMAÇÕES E BOTÃO MOBILE (Direita no Celular, Baixo no PC) */}
+        <div className="flex flex-col flex-1 py-1 sm:py-0 justify-between">
+          <div>
+            <h3 className="font-medium text-sm md:text-base text-texto line-clamp-2 mb-1 sm:mb-0 leading-tight">{p.get("name")}</h3>
+            {variants.length > 0 && <span className="text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 py-0.5 rounded-md inline-block sm:hidden mb-1">{variants.length} Cores</span>}
+          </div>
+          
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mt-auto sm:mt-1">
+            {promo.isActive ? (
+              <div className="flex flex-col">
+                <span className="text-[10px] md:text-xs line-through text-texto-sec">R$ {p.get("price").toFixed(2)}</span>
+                <span className="text-texto font-bold text-base">R$ {promo.price.toFixed(2)}</span>
+              </div>
+            ) : (
+              <p className="text-texto-sec text-sm md:text-base font-bold sm:font-normal text-texto sm:text-texto-sec">R$ {p.get("price").toFixed(2)}</p>
+            )}
+            {variants.length > 0 && <span className="hidden sm:inline-block text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 md:px-2 py-0.5 rounded-md shrink-0">{variants.length} Cores</span>}
+          </div>
+
+          {/* BOTÃO ADICIONAR (Aparece sempre no Celular) */}
+          {!isOutOfStock ? (
+            <button onClick={(e) => handleAddToCartClick(p, e)} className="sm:hidden mt-3 w-full bg-texto text-card font-bold py-2.5 text-xs rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
+              <Plus className="w-3.5 h-3.5" /> Adicionar
+            </button>
+          ) : (
+            <div className="sm:hidden mt-3 w-full bg-fundo text-texto-sec font-bold py-2.5 text-xs rounded-xl flex items-center justify-center border border-borda">
+              Esgotado
+            </div>
+          )}
         </div>
       </div>
     );
-  }, [favorites, toggleFavorite, openProductDetails, handleAddToCartClick]);
+  }, [favorites, toggleFavorite, openProductDetails, handleAddToCartClick, getActivePromo]);
 
   return (
     <div className="min-h-screen bg-fundo transition-colors duration-500 font-sans relative flex flex-col text-texto">
@@ -675,9 +712,13 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       <header className="bg-fundo backdrop-blur-md transition-colors duration-500 sticky top-0 z-50 border-b border-borda">
         <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-16 md:h-20 flex items-center justify-between gap-3 md:gap-4">
           
+          {/*BTN DA LOGO DA PÁGINA*/}
           <div className="flex-1 flex justify-start">
-            <button onClick={() => setCurrentView("store")} className="text-2xl md:text-3xl font-serif italic tracking-wide text-texto hover:opacity-70 transition-opacity truncate">
-              Flor e Sol
+            <button 
+              onClick={() => window.innerWidth < 768 ? setIsMobileMenuOpen(true) : setCurrentView("store")} 
+              className="text-2xl md:text-3xl font-serif italic tracking-wide text-texto hover:opacity-70 transition-opacity truncate flex items-center gap-2"
+            >
+              <Menu className="w-5 h-5 md:hidden" /> Flor e Sol
             </button>
           </div>
           
@@ -741,7 +782,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                 </div>
               )}
             </div>
-            <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden p-2 text-texto-sec hover:text-texto hover:bg-texto/5 rounded-full transition-colors"><Menu className="w-6 h-6" /></button>
           </div>
         </div>
       </header>
@@ -1020,8 +1060,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                           animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -20 }}
                           transition={{ duration: 0.4, ease: "easeOut" }}
-                          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-8"
-                        >
+                          className="flex flex-col sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 md:gap-8"                        >
                           {currentCatalogPageItems.map(renderProductCard)}
                           {currentCatalogPageItems.length === 0 && <p className="text-texto-sec col-span-full text-center py-10">Nenhum produto nesta categoria.</p>}
                         </motion.div>
