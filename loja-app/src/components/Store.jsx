@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Parse from "../parseSetup";
 import { Search, LogOut, ShoppingBag, X, Plus, Minus, Trash2, CheckCircle, Loader2, User, Package, Settings, Instagram, Facebook, Twitter, Timer, Menu, CreditCard, QrCode, Truck, MessageCircle, Heart, TrendingUp, Sun, Moon, ArrowLeft, Star, Sparkles, Camera } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // =========================================
-// COMPONENTE ISOLADO PARA O RELÓGIO (ALTA PERFORMANCE)
-// O relógio atualiza só aqui dentro, sem travar a loja inteira a cada 1 segundo!
+// COMPONENTE ISOLADO PARA O RELÓGIO
 // =========================================
 const PromoTimer = ({ endsAt }) => {
   const [now, setNow] = useState(new Date());
@@ -16,18 +15,18 @@ const PromoTimer = ({ endsAt }) => {
   }, []);
 
   const total = Date.parse(endsAt) - Date.parse(now);
-  if (total <= 0) return <span className="text-white/90 font-bold text-[10px] md:text-xs tracking-widest uppercase">Encerrada</span>;
+  if (total <= 0) return <span className="text-white font-bold text-[10px] tracking-widest uppercase">Encerrada</span>;
   
   const days = Math.floor(total / (1000 * 60 * 60 * 24));
   const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
   const minutes = Math.floor((total / 1000 / 60) % 60);
   const seconds = Math.floor((total / 1000) % 60);
   
-  if (days > 0) return <span className="text-white/90 font-bold text-[10px] md:text-xs tracking-widest uppercase">Termina em {days}d {hours}h</span>;
-  return <span className="text-white/90 font-bold text-[10px] md:text-xs tracking-widest uppercase">Termina em {hours}h {minutes}m {seconds}s</span>;
+  if (days > 0) return <span className="text-white font-bold text-[10px] tracking-widest uppercase">Termina em {days}d {hours}h</span>;
+  return <span className="text-white font-bold text-[10px] tracking-widest uppercase">Termina em {hours}h {minutes}m {seconds}s</span>;
 };
 
-export default function Store({ currentUser, onLogout }) {
+export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const activeUser = Parse.User.current();
 
   const [products, setProducts] = useState([]);
@@ -37,7 +36,6 @@ export default function Store({ currentUser, onLogout }) {
   const [storeSettings, setStoreSettings] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   
-  // Otimização: A loja agora só re-renderiza o tempo a cada 60 segundos (para remover promos vencidas)
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [cart, setCart] = useState([]);
@@ -74,6 +72,36 @@ export default function Store({ currentUser, onLogout }) {
 
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   
+  // =========================================================
+  // CONTROLE DE ROLAGEM INTELIGENTE PARA O BANNER DE OFERTAS
+  // =========================================================
+  const promoScrollRef = useRef(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+
+  const handlePromoScroll = () => {
+    if (promoScrollRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = promoScrollRef.current;
+      setCanScrollLeft(scrollLeft > 0);
+      // Uma margem de 2px para evitar bugs de arredondamento de pixel do navegador
+      setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 2);
+    }
+  };
+
+  // Escuta se a tela mudar de tamanho para recalcular se as setas devem aparecer
+  useEffect(() => {
+    handlePromoScroll();
+    window.addEventListener('resize', handlePromoScroll);
+    return () => window.removeEventListener('resize', handlePromoScroll);
+  }, [products]); // Recalcula quando carregar os produtos
+
+  const scrollPromo = (direction) => {
+    if (promoScrollRef.current) {
+      const scrollAmount = 340; // Tamanho aproximado de 1 card + gap
+      promoScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+    }
+  };
+
   const scrollToSection = useCallback((sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -97,8 +125,6 @@ export default function Store({ currentUser, onLogout }) {
   useEffect(() => {
     fetchProducts();
     fetchStoreSettings();
-    // O timer da loja inteira agora roda a cada 1 minuto (60000ms), 
-    // os segundos do Mosaico são cuidados pelo componente PromoTimer isolado!
     const timer = setInterval(() => setCurrentTime(new Date()), 60000);
     return () => clearInterval(timer);
   }, []);
@@ -181,7 +207,12 @@ export default function Store({ currentUser, onLogout }) {
   const toggleFavorite = useCallback(async (productId, e) => {
     e.stopPropagation(); 
     const safeUser = Parse.User.current();
-    if (!safeUser) { showToast("Faça login para salvar!"); return; }
+    
+    if (!safeUser) { 
+      onRequireLogin(); 
+      return; 
+    }
+
     let newFavorites = [...favorites];
     if (newFavorites.includes(productId)) {
       newFavorites = newFavorites.filter(id => id !== productId);
@@ -192,12 +223,11 @@ export default function Store({ currentUser, onLogout }) {
     }
     setFavorites(newFavorites);
     try { await safeUser.save(); } catch (error) {}
-  }, [favorites, showToast]);
+  }, [favorites, onRequireLogin]);
 
   const getActivePromo = useCallback((product) => {
     const discountPrice = product.get("discountPrice");
     const discountEndsAt = product.get("discountEndsAt");
-    // Agora olha pro tempo real local, sem re-renderizar a loja a cada segundo
     if (discountPrice && discountEndsAt && discountEndsAt > new Date()) {
       return { isActive: true, price: discountPrice, endsAt: discountEndsAt };
     }
@@ -238,7 +268,7 @@ export default function Store({ currentUser, onLogout }) {
   const submitReview = async (e) => {
     e.preventDefault();
     const currentUser = Parse.User.current();
-    if (!currentUser) { showToast("Faça login para avaliar!"); return; }
+    if (!currentUser) { onRequireLogin(); return; } 
     if (!newReviewComment.trim()) { showToast("Escreva um comentário."); return; }
 
     setIsSubmittingReview(true);
@@ -304,9 +334,6 @@ export default function Store({ currentUser, onLogout }) {
 
   const removeFromCart = useCallback((productId, variant) => setCart((prevCart) => prevCart.filter(item => !(item.product.id === productId && item.variant === variant))), []);
 
-  // =========================================
-  // OTIMIZAÇÃO: useMemo PARA LISTAS E CÁLCULOS
-  // =========================================
   const normalizeText = (text) => (text || "").toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
   const searchResults = useMemo(() => {
@@ -392,10 +419,10 @@ export default function Store({ currentUser, onLogout }) {
   const infoBannerBtn = storeSettings?.get("infoBannerBtn") !== undefined ? storeSettings.get("infoBannerBtn") : "Explorar";
   const infoBannerImageUrl = storeSettings?.get("infoBannerImageUrl") || "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop";
 
-  // =========================================
-  // LAZY LOADING & PRELOAD DO CARROSSEL
-  // Baixa a próxima foto silenciosamente na memória
-  // =========================================
+  const promoBannerTitle = storeSettings?.get("promoBannerTitle") || "Ofertas Especiais";
+  const promoBannerDesc = storeSettings?.get("promoBannerDesc") || "Uma seleção exclusiva de peças com condições únicas. Não deixe para depois.";
+  const promoBannerImageUrl = storeSettings?.get("promoBannerImageUrl") || "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=2070&auto=format&fit=crop";
+
   useEffect(() => {
     if (bannersArray.length > 1) {
       const nextIndex = (currentBannerIndex + 1) % bannersArray.length;
@@ -412,56 +439,54 @@ export default function Store({ currentUser, onLogout }) {
     return () => clearInterval(interval);
   }, [bannersArray.length, currentBannerIndex]);
 
-  // =========================================
-  // CARDS DE PRODUTO (SEM ZOOM / FLAT DESIGN)
-  // =========================================
-  
-  /*Ofertas Limitadas*/
-  const renderMosaicPromoCard = useCallback((p, index) => {
+  const renderPromoBannerCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
     const promo = getActivePromo(p);
     const isFav = favorites.includes(p.id);
     const hasDetails = p.get("hasDetails");
-    
-    // 👇 A MÁGICA: Posições 0, 3, 4, 7... ficam largas. As outras ficam curtas.
-    const isLarge = index % 4 === 0 || index % 4 === 3;
 
     return (
-      // 👇 Removemos o "aspect", agora usamos min-h-[400px] para todos ficarem da mesma altura na linha!
-      <div key={p.id} className={`group relative overflow-hidden rounded-[24px] md:rounded-[32px] bg-black shadow-sm ${!isOutOfStock ? 'cursor-pointer' : ''} ${isLarge ? 'md:col-span-2' : 'md:col-span-1'} min-h-[350px] md:min-h-[400px] lg:min-h-[450px] h-full w-full`}>
-        {!isOutOfStock && (<div className="absolute inset-0 z-10" onClick={(e) => { e.stopPropagation(); openProductDetails(p); }} />)}
-        
-        <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-top ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
-        
-        <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 backdrop-blur-md rounded-full text-texto hover:bg-white/30 transition-colors duration-300 z-20 shadow-sm">
-          <Heart className="w-4 h-4 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
-        </button>
-
-        {isOutOfStock && <div className="absolute top-4 left-4 md:top-5 md:left-5 bg-black/60 backdrop-blur-md text-white text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider z-20 shadow-lg">Esgotado</div>}
-        
-        {hasDetails && !isOutOfStock && (
-          <div className="absolute top-4 left-4 md:top-5 md:left-5 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-            <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
-          </div>
-        )}
-
-        <div className="absolute inset-0 opacity-0 group-hover:opacity-100 bg-gradient-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500 pointer-events-none z-10" />
-        
-        <div className="absolute inset-x-0 bottom-0 p-5 md:p-8 flex flex-col justify-end opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-8 group-hover:translate-y-0 z-20 pointer-events-none">
-          <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3">
-            <Timer className="w-4 h-4 md:w-5 md:h-5 text-white/90" />
-            <PromoTimer endsAt={promo.endsAt} />
-          </div>
-          <h3 className="font-serif italic text-2xl sm:text-3xl md:text-4xl text-white mb-2 leading-tight drop-shadow-lg line-clamp-2 break-words">{p.get("name")}</h3>
+      <div key={p.id} className="relative shrink-0 w-[80vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-[340px] snap-center pb-4 pt-2">
+        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group/card relative aspect-[3/4] w-full overflow-hidden rounded-[24px] md:rounded-[32px] shadow-2xl border border-white/10 transition-all duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer hover:shadow-white/5' : ''}`}>
           
-          <div className="flex items-end justify-between mt-2 md:mt-4 pointer-events-auto">
-            <div className="flex flex-col drop-shadow-md min-w-0 pr-2">
-              <span className="text-xs md:text-sm line-through text-white/60 font-normal mb-0.5 truncate">De R$ {p.get("price").toFixed(2)}</span>
-              <span className="font-bold text-white text-xl md:text-3xl truncate">R$ {promo.price.toFixed(2)}</span>
+          <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
+          
+          <div className="absolute top-4 left-4 md:top-5 md:left-5 flex flex-col gap-2 z-30 pointer-events-none">
+            {!isOutOfStock && (
+              <div className="bg-black/80 backdrop-blur-md text-white text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1.5 whitespace-nowrap">
+                <Timer className="w-3 h-3 md:w-4 md:h-4" />
+                <PromoTimer endsAt={promo.endsAt} />
+              </div>
+            )}
+          </div>
+
+          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-black/30 backdrop-blur-lg rounded-full text-white hover:bg-black/50 transition-colors duration-300 z-30 shadow-sm border border-white/10">
+            <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+          </button>
+
+          {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
+
+          <div className="absolute inset-x-0 bottom-0 h-[70%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 rounded-[24px] md:rounded-[32px]" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
+          <div className="absolute inset-x-0 bottom-0 h-[45%] pointer-events-none z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 rounded-[24px] md:rounded-[32px]" />
+
+          <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover/card:translate-y-0 group-hover/card:opacity-100 transition-all duration-500 pointer-events-none rounded-[24px] md:rounded-[32px]">
+            <span className="text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-white/70 drop-shadow-sm">{p.get("category")}</span>
+            <h3 className="font-serif italic text-2xl sm:text-3xl text-white line-clamp-1 drop-shadow-sm">{p.get("name")}</h3>
+            
+            <div className="flex items-center gap-2 mt-1 pointer-events-auto drop-shadow-sm">
+              {promo.isActive ? (
+                <>
+                  <span className="text-xs md:text-sm line-through text-white/60 pr-1">R$ {p.get("price").toFixed(2)}</span>
+                  <span className="font-bold text-white text-xl sm:text-2xl">R$ {promo.price.toFixed(2)}</span>
+                </>
+              ) : (
+                <span className="font-bold text-white text-xl sm:text-2xl">R$ {p.get("price").toFixed(2)}</span>
+              )}
             </div>
             
-            <button onClick={(e) => handleAddToCartClick(p, e)} disabled={isOutOfStock} className="shrink-0 h-10 md:h-12 px-5 md:px-8 text-sm md:text-base bg-white text-neutral-900 font-bold rounded-full flex items-center justify-center shadow-lg hover:bg-neutral-200 transition-colors duration-300 disabled:opacity-50">
-              {isOutOfStock ? "Esgotado" : "Adicionar"}
+            <button onClick={(e) => handleAddToCartClick(p, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-12 md:h-14 text-sm md:text-base bg-white text-black font-bold rounded-xl md:rounded-2xl flex items-center justify-center hover:bg-neutral-200 transition-colors duration-300 disabled:opacity-50 gap-2 shadow-lg">
+              {isOutOfStock ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Plus className="w-5 h-5 md:w-6 md:h-6" />}
+              {isOutOfStock ? "Esgotado" : "Adicionar à sacola"}
             </button>
           </div>
         </div>
@@ -469,7 +494,6 @@ export default function Store({ currentUser, onLogout }) {
     );
   }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
-  /*Lançamentos*/
   const renderNewArrivalCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
     const promo = getActivePromo(p);
@@ -479,13 +503,10 @@ export default function Store({ currentUser, onLogout }) {
     return (
       <div key={p.id} className="relative shrink-0 w-[80vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-none snap-center pb-6 md:pb-8 pt-2">
         <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group relative aspect-[3/4] w-full overflow-hidden rounded-[24px] md:rounded-[32px] shadow-sm transition-shadow duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
-          
           <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
           
           <div className="absolute top-4 left-4 md:top-5 md:left-5 flex items-center gap-2 z-30 pointer-events-none">
             <div className="bg-texto text-card text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md">Novo</div>
-            
-            {/* SELO PREMIUM NO LUGAR DO DETALHES */}
             {hasDetails && !isOutOfStock && (
               <div className="bg/30 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                 <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
@@ -493,7 +514,7 @@ export default function Store({ currentUser, onLogout }) {
             )}
           </div>
 
-          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/30 transition-colors duration-300 z-30 shadow-sm">
+          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-card/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/30 transition-colors duration-300 z-30 shadow-sm">
             <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
           </button>
 
@@ -518,7 +539,6 @@ export default function Store({ currentUser, onLogout }) {
     );
   }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
-  /* Mais Desejados */
   const renderBestSellerCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
     const promo = getActivePromo(p);
@@ -528,7 +548,6 @@ export default function Store({ currentUser, onLogout }) {
     return (
       <div key={p.id} className="relative shrink-0 w-[80vw] max-w-[280px] sm:max-w-[320px] md:w-full md:max-w-none snap-center pb-6 md:pb-8 pt-2">
         <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group w-full aspect-[3/4] relative rounded-[24px] md:rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
-          
           <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
           
           <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-card/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/50 transition-colors duration-300 z-30 shadow-sm">
@@ -537,14 +556,12 @@ export default function Store({ currentUser, onLogout }) {
 
           {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
           
-          {/* SELO PREMIUM */}
           {hasDetails && !isOutOfStock && (
             <div className="absolute top-4 left-4 md:top-5 md:left-5 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
               <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
             </div>
           )}
           
-          {/* EFEITO HOVER DO LANÇAMENTOS (Backdrop + Mask) */}
           <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
           <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-texto/30 via-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
@@ -564,7 +581,6 @@ export default function Store({ currentUser, onLogout }) {
     );
   }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
-  /*Todos os Produtos*/
   const renderProductCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
     const variants = p.get("variants") || [];
@@ -572,9 +588,8 @@ export default function Store({ currentUser, onLogout }) {
     const hasDetails = p.get("hasDetails");
     
     return (
-      <div key={p.id} className="group relative flex flex-col">
+      <div key={p.id} className="group relative flex flex-col h-full">
         <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`aspect-[4/5] overflow-hidden rounded-[20px] md:rounded-[24px] bg-card mb-3 md:mb-4 relative border border-transparent hover:border-borda transition-colors ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
-          
           <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
           
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />
@@ -585,7 +600,6 @@ export default function Store({ currentUser, onLogout }) {
 
           {isOutOfStock && <div className="absolute top-3 left-3 md:top-4 md:left-4 bg-card/90 backdrop-blur-sm text-texto text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-3 md:py-1.5 rounded-full uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
           
-          {/* SELO PREMIUM NO LUGAR DO DETALHES */}
           {hasDetails && !isOutOfStock && (
             <div className="absolute top-3 left-3 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
               <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> Premium
@@ -603,7 +617,7 @@ export default function Store({ currentUser, onLogout }) {
         <h3 className="font-medium text-sm md:text-base text-texto line-clamp-2">{p.get("name")}</h3>
         <div className="flex justify-between items-end mt-1">
           <p className="text-texto-sec text-sm md:text-base">R$ {p.get("price").toFixed(2)}</p>
-          {variants.length > 0 && <span className="text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 md:px-2 py-0.5 rounded-md">{variants.length} Cores</span>}
+          {variants.length > 0 && <span className="text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 md:px-2 py-0.5 rounded-md shrink-0">{variants.length} Cores</span>}
         </div>
       </div>
     );
@@ -612,10 +626,7 @@ export default function Store({ currentUser, onLogout }) {
   return (
     <div className="min-h-screen bg-fundo transition-colors duration-500 font-sans relative flex flex-col text-texto">
       
-      {/* ========================================================================= */}
-      {/* CABEÇALHO (NAVBAR) */}
-      {/* ========================================================================= */}
-      <header className="bg-fundo backdrop-blur-md transition-colors duration-500 sticky top-0 z-50">
+      <header className="bg-fundo backdrop-blur-md transition-colors duration-500 sticky top-0 z-50 border-b border-borda">
         <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-16 md:h-20 flex items-center justify-between gap-3 md:gap-4">
           
           <div className="flex-1 flex justify-start">
@@ -646,14 +657,13 @@ export default function Store({ currentUser, onLogout }) {
               {cartItemsCount > 0 && (<span className={`absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 ${currentView === "cart" ? "bg-card border-texto" : "bg-texto border-fundo"}`} />)}
             </button>
             
-            {/* BOTÃO DE PERFIL*/}
             <div 
               className="relative hidden md:block ml-1"
-              onMouseEnter={() => setIsUserMenuOpen(true)}
+              onMouseEnter={() => activeUser && setIsUserMenuOpen(true)}
               onMouseLeave={() => setIsUserMenuOpen(false)}
             >
               <button 
-                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)} 
+                onClick={() => activeUser ? setIsUserMenuOpen(!isUserMenuOpen) : onRequireLogin()} 
                 className={`flex items-center gap-2 px-3 py-2.5 rounded-full transition-colors ${currentView === "profile" ? "bg-texto text-card shadow-sm" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}
               >
                 {userAvatar ? (
@@ -666,14 +676,14 @@ export default function Store({ currentUser, onLogout }) {
                 </span>
               </button>
 
-              {isUserMenuOpen && (
+              {isUserMenuOpen && activeUser && (
                 <div className="absolute right-0 top-full pt-2 w-56 z-50 animate-in fade-in slide-in-from-top-2">
                   <div className="bg-card rounded-2xl shadow-xl border border-borda overflow-hidden py-2">
                     <div className="px-4 py-3 border-b border-borda mb-2 flex items-center gap-3">
                       {userAvatar ? <img src={userAvatar} alt="Perfil" className="w-10 h-10 rounded-full object-cover border border-borda" /> : <div className="w-10 h-10 rounded-full bg-fundo flex items-center justify-center text-texto-sec"><User className="w-5 h-5" /></div>}
                       <div className="min-w-0">
-                        <p className="text-sm font-bold text-texto truncate">{activeUser?.get("name") || "Bem-vindo!"}</p>
-                        <p className="text-xs text-texto-sec truncate">{activeUser?.get("email")}</p>
+                        <p className="text-sm font-bold text-texto truncate">{activeUser.get("name") || "Bem-vindo!"}</p>
+                        <p className="text-xs text-texto-sec truncate">{activeUser.get("email")}</p>
                       </div>
                     </div>
                     <button onClick={() => { setCurrentView("profile"); setProfileTab("data"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Settings className="w-4 h-4" /> Meus Dados</button>
@@ -690,7 +700,6 @@ export default function Store({ currentUser, onLogout }) {
         </div>
       </header>
 
-      {/* MENU MOBILE */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
@@ -698,25 +707,41 @@ export default function Store({ currentUser, onLogout }) {
             <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", bounce: 0, duration: 0.5 }} className="fixed top-0 right-0 h-full w-[85%] max-w-sm bg-card shadow-2xl z-50 flex flex-col md:hidden">
               <div className="flex items-center justify-between p-5 border-b border-borda">
                 <h2 className="text-xl font-serif italic text-texto">Flor e Sol</h2>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-fundo rounded-full transition text-texto-sec hover:text-texto"><X className="w-5 h-5" /></button>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-fundo rounded-full transition text-texto-sec hover:text-texto"><X className="w-4 h-4" /></button>
               </div>
               <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6">
+                
                 <div className="bg-fundo p-4 rounded-xl border border-borda flex items-center gap-3">
                   {userAvatar ? <img src={userAvatar} alt="Perfil" className="w-12 h-12 rounded-full object-cover border border-borda" /> : <div className="w-12 h-12 rounded-full bg-card flex items-center justify-center text-texto-sec"><User className="w-6 h-6" /></div>}
                   <div className="min-w-0">
-                    <p className="text-[10px] text-texto-sec uppercase tracking-wider mb-0.5">Olá,</p>
-                    <p className="font-bold text-texto truncate text-base">{activeUser?.get("name") || activeUser?.get("email")}</p>
+                    {activeUser ? (
+                      <>
+                        <p className="text-[10px] text-texto-sec uppercase tracking-wider mb-0.5">Olá,</p>
+                        <p className="font-bold text-texto truncate text-base">{activeUser.get("name") || activeUser.get("email")}</p>
+                      </>
+                    ) : (
+                      <button onClick={() => { setIsMobileMenuOpen(false); onRequireLogin(); }} className="text-left">
+                        <p className="font-bold text-texto text-base">Fazer Login</p>
+                        <p className="text-xs text-texto-sec">ou Cadastre-se</p>
+                      </button>
+                    )}
                   </div>
                 </div>
+
                 <nav className="flex flex-col gap-1.5">
                   <button onClick={() => { setCurrentView("store"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "store" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><ShoppingBag className="w-5 h-5" /> Vitrine da Loja</button>
                   <button onClick={() => { setCurrentView("cart"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "cart" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><ShoppingBag className="w-5 h-5" /> Meu Carrinho</button>
-                  <button onClick={() => { setCurrentView("profile"); setProfileTab("data"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "profile" && profileTab === "data" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><Settings className="w-5 h-5" /> Meus Dados</button>
-                  <button onClick={() => { setCurrentView("profile"); setProfileTab("orders"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "profile" && profileTab === "orders" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><Package className="w-5 h-5" /> Meus Pedidos</button>
-                  <button onClick={() => { setCurrentView("profile"); setProfileTab("favorites"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "profile" && profileTab === "favorites" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><Heart className="w-5 h-5" /> Meus Favoritos</button>
+                  <button onClick={() => { if(!activeUser){ onRequireLogin(); setIsMobileMenuOpen(false); return;} setCurrentView("profile"); setProfileTab("data"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "profile" && profileTab === "data" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><Settings className="w-5 h-5" /> Meus Dados</button>
+                  <button onClick={() => { if(!activeUser){ onRequireLogin(); setIsMobileMenuOpen(false); return;} setCurrentView("profile"); setProfileTab("orders"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "profile" && profileTab === "orders" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><Package className="w-5 h-5" /> Meus Pedidos</button>
+                  <button onClick={() => { if(!activeUser){ onRequireLogin(); setIsMobileMenuOpen(false); return;} setCurrentView("profile"); setProfileTab("favorites"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "profile" && profileTab === "favorites" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><Heart className="w-5 h-5" /> Meus Favoritos</button>
                 </nav>
+                
                 <div className="mt-auto pt-5 border-t border-borda flex items-center justify-between">
-                  <button onClick={onLogout} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-3"><LogOut className="w-5 h-5" /> Sair</button>
+                  {activeUser ? (
+                    <button onClick={onLogout} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-3"><LogOut className="w-5 h-5" /> Sair</button>
+                  ) : (
+                    <div></div>
+                  )}
                   <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-fundo rounded-xl text-texto-sec hover:text-texto transition-colors">
                     {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                   </button>
@@ -730,7 +755,6 @@ export default function Store({ currentUser, onLogout }) {
       <div className="flex-grow relative overflow-hidden">
         <AnimatePresence mode="wait">
           
-          {/* TELA 1: VITRINE */}
           {currentView === "store" && (
             <motion.main 
               key="view-store"
@@ -759,7 +783,7 @@ export default function Store({ currentUser, onLogout }) {
                         exit={{ opacity: 0 }}
                         transition={{ duration: 1.0, ease: "easeInOut" }}
                         className="absolute inset-0 z-10"
-                        style={{ willChange: "opacity" }} // ✅ A MÁGICA DA PLACA DE VÍDEO AQUI!
+                        style={{ willChange: "opacity" }}
                       >
                         <img 
                           src={bannersArray[currentBannerIndex].imageUrl} 
@@ -770,7 +794,6 @@ export default function Store({ currentUser, onLogout }) {
                         />
                         <div className="absolute inset-0 bg-black/30"></div>
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pb-12 md:pb-20">
-                          {/* TEXTOS COM ANIMAÇÃO RESTAURADA */}
                           <motion.span initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }} className="text-neutral-100/90 uppercase tracking-[0.3em] text-[10px] md:text-sm font-bold mb-2 md:mb-3 drop-shadow-sm">{bannersArray[currentBannerIndex].tag}</motion.span>
                           <motion.h2 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.6 }} className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-serif italic text-neutral-100 mb-4 md:mb-6 drop-shadow-md break-words">{bannersArray[currentBannerIndex].title}</motion.h2>
                           <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6, duration: 0.6 }} className="text-sm sm:text-base md:text-xl text-neutral-100/95 max-w-2xl mb-8 md:mb-10 drop-shadow-sm font-light px-4">{bannersArray[currentBannerIndex].desc}</motion.p>
@@ -803,14 +826,62 @@ export default function Store({ currentUser, onLogout }) {
                   )}
 
                   {promoProducts.length > 0 && (
-                    <section id="ofertas" className="mt-12 md:mt-16">
-                      <div className="flex flex-col items-center text-center mb-8 md:mb-10 gap-2 md:gap-3 px-4">
-                        <Timer className="w-6 h-6 md:w-8 md:h-8 text-texto mb-1" />
-                        <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif italic text-texto break-words">Ofertas Limitadas</h2>
-                        <p className="text-sm md:text-base text-texto-sec max-w-xl mb-5">Peças exclusivas com descontos especiais.</p>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 grid-flow-row-dense">
-                        {promoProducts.map((p, index) => renderMosaicPromoCard(p, index))}
+                    <section id="ofertas" className="mt-12 md:mt-24 relative w-full rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group bg-black">
+                      {/* Imagem de Fundo do Banner de Ofertas */}
+                      <img 
+                        src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=2070&auto=format&fit=crop" 
+                        alt="Ofertas Limitadas" 
+                        className="absolute inset-0 w-full h-full object-cover opacity-50 transition-transform duration-1000 group-hover:scale-105" 
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/20"></div>
+
+                      <div className="relative z-10 flex flex-col lg:flex-row items-center p-6 sm:p-10 md:p-16 gap-8 md:gap-12 h-full">
+                        
+                        {/* Textos do Banner (Esquerda) */}
+                        <div className="w-full lg:w-1/3 flex flex-col justify-center text-left">
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center backdrop-blur-md border border-amber-500/30">
+                              <Timer className="w-4 h-4" />
+                            </div>
+                            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-amber-500">Tempo Limitado</span>
+                          </div>
+                          <h2 className="text-4xl sm:text-5xl md:text-6xl font-serif italic text-white mb-4 drop-shadow-md leading-tight">Ofertas Especiais</h2>
+                          <p className="text-sm md:text-base text-white/80 max-w-sm mb-8 font-light">Uma seleção exclusiva de peças com condições únicas. Não deixe para depois.</p>
+                        </div>
+
+                        {/* CARDS COM BOTÕES DE NAVEGAÇÃO INTELIGENTE (Direita) */}
+                        <div className="w-full lg:w-2/3 relative group/slider">
+                          
+                          {/* Botão Flutuante Esquerda (Condicional) */}
+                          {canScrollLeft && (
+                            <button 
+                              onClick={() => scrollPromo('left')} 
+                              className="hidden md:flex absolute left-0 lg:-left-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100"
+                            >
+                              <ArrowLeft className="w-6 h-6" />
+                            </button>
+                          )}
+
+                          <div 
+                            ref={promoScrollRef} 
+                            onScroll={handlePromoScroll} 
+                            className="flex overflow-x-auto gap-4 md:gap-6 snap-x snap-mandatory scrollbar-hide pb-4 pt-4 px-4 -mx-4 md:px-0 md:mx-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                          >
+                            {promoProducts.map(renderPromoBannerCard)}
+                          </div>
+
+                          {/* Botão Flutuante Direita (Condicional) */}
+                          {canScrollRight && promoProducts.length > 1 && (
+                            <button 
+                              onClick={() => scrollPromo('right')} 
+                              className="hidden md:flex absolute right-0 lg:-right-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100 rotate-180"
+                            >
+                              <ArrowLeft className="w-6 h-6" />
+                            </button>
+                          )}
+
+                        </div>
+                        
                       </div>
                     </section>
                   )}
@@ -828,7 +899,6 @@ export default function Store({ currentUser, onLogout }) {
                   {infoBannerActive && (
                     <section className="mt-8 md:mt-24 mb-4">
                       <div className="relative w-full h-[35vh] md:h-[50vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group">
-                        {/* Imagem do InfoBanner agora SEM scale para manter o Flat Design */}
                         <img src={infoBannerImageUrl} alt={infoBannerTitle} loading="lazy" className="absolute inset-0 w-full h-full object-cover object-center" />
                         <div className="absolute inset-0 bg-black/40 transition-colors hover:bg-black/50 duration-500"></div>
                         <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-10">
@@ -844,13 +914,13 @@ export default function Store({ currentUser, onLogout }) {
                     </section>
                   )}
 
-                  <section id="catalogo" className="border-t border-borda pt-8 md:pt-12 mt-8 md:mt-12">
+                  <section id="catalogo" className="border-t border-borda pt-8 md:pt-12 mt-8 md:mt-12 relative">
                     {categoriesList.length > 1 && (
                       <div className="flex items-center gap-3 md:gap-4 overflow-x-auto pb-6 md:pb-8 scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:justify-center">
                         {categoriesList.map(cat => (
                           <button 
                             key={cat} 
-                            onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }} // Reseta para a pág 1 ao trocar a categoria
+                            onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
                             className={`px-5 py-2 md:px-6 md:py-2.5 rounded-full text-xs md:text-sm font-bold transition-colors duration-300 whitespace-nowrap border shrink-0 ${selectedCategory === cat ? "bg-texto text-card shadow-md border-transparent" : "bg-card border-borda text-texto-sec hover:text-texto hover:bg-texto/5"}`}
                           >
                             {cat}
@@ -859,43 +929,66 @@ export default function Store({ currentUser, onLogout }) {
                       </div>
                     )}
                     
-                    <AnimatePresence mode="wait">
-                      <motion.div 
-                        key={`${selectedCategory}-${currentPage}`} // Anima sempre que mudar a página ou categoria
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.4, ease: "easeOut" }}
-                        className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-8"
-                      >
-                        {/* Renderiza apenas os 12 itens da página atual */}
-                        {currentCatalogPageItems.map(renderProductCard)}
-                        {currentCatalogPageItems.length === 0 && <p className="text-texto-sec col-span-full text-center py-10">Nenhum produto nesta categoria.</p>}
-                      </motion.div>
-                    </AnimatePresence>
+                    <div className="relative w-full">
+                      {/* BOTÃO FLUTUANTE ESQUERDA (Jogado mais para fora) */}
+                      {currentPage > 1 && (
+                        <button 
+                          onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} 
+                          className="hidden md:flex absolute -left-12 lg:-left-16 top-1/2 -translate-y-1/2 w-10 h-10 items-center justify-center rounded-full bg-texto text-card hover:opacity-70 transition-opacity z-20 shadow-sm"
+                        >
+                          <ArrowLeft className="w-5 h-5" />
+                        </button>
+                      )}
 
-                    {/* Controles de Paginação (Botões de Próximo e Anterior) */}
+                      <AnimatePresence mode="wait">
+                        <motion.div 
+                          key={`${selectedCategory}-${currentPage}`}
+                          initial={{ opacity: 0, x: 20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -20 }}
+                          transition={{ duration: 0.4, ease: "easeOut" }}
+                          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-8"
+                        >
+                          {currentCatalogPageItems.map(renderProductCard)}
+                          {currentCatalogPageItems.length === 0 && <p className="text-texto-sec col-span-full text-center py-10">Nenhum produto nesta categoria.</p>}
+                        </motion.div>
+                      </AnimatePresence>
+
+                      {/* BOTÃO FLUTUANTE DIREITA (Jogado mais para fora) */}
+                      {currentPage < totalCatalogPages && (
+                        <button 
+                          onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} 
+                          className="hidden md:flex absolute -right-12 lg:-right-16 top-1/2 -translate-y-1/2 w-10 h-10 items-center justify-center rounded-full bg-texto text-card hover:opacity-70 transition-opacity z-20 shadow-sm rotate-180"
+                        >
+                          <ArrowLeft className="w-5 h-5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* NAVEGAÇÃO MOBILE (Escondida no Desktop) */}
                     {totalCatalogPages > 1 && (
-                      <div className="flex justify-center items-center gap-4 mt-10 md:mt-14">
+                      <div className="md:hidden flex justify-center items-center gap-4 mt-10">
+                        
                         <button 
                           onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} 
                           disabled={currentPage === 1} 
-                          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm"
+                          className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm"
                         >
-                          <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
+                          <ArrowLeft className="w-5 h-5" />
                         </button>
                         
-                        <span className="text-sm md:text-base font-bold text-texto-sec tracking-wider">
+                        <span className="text-sm font-bold text-texto-sec tracking-wider">
                           <span className="text-texto">{currentPage}</span> / {totalCatalogPages}
                         </span>
                         
                         <button 
                           onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} 
                           disabled={currentPage === totalCatalogPages} 
-                          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm rotate-180"
+                          className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm rotate-180"
                         >
-                          <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
+                          <ArrowLeft className="w-5 h-5" />
                         </button>
+
                       </div>
                     )}
                   </section>
@@ -904,7 +997,6 @@ export default function Store({ currentUser, onLogout }) {
             </motion.main>
           )}
 
-          {/* TELA 2: PERFIL */}
           {currentView === "profile" && (
              <motion.main 
              key="view-profile"
@@ -1020,7 +1112,6 @@ export default function Store({ currentUser, onLogout }) {
            </motion.main>
           )}
 
-          {/* TELA 3: CARRINHO E CHECKOUT */}
           {currentView === "cart" && (
             <motion.main
               key="view-cart"
@@ -1193,7 +1284,11 @@ export default function Store({ currentUser, onLogout }) {
                       <AnimatePresence mode="wait">
                         {checkoutStep === "cart" && (
                           <motion.div key="btn-cart" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                            <button onClick={() => setCheckoutStep("payment")} disabled={cart.length === 0} className="w-full bg-btn text-btn-texto font-bold py-4 md:py-5 rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-lg disabled:opacity-50 flex justify-center items-center text-sm md:text-lg">
+                            <button 
+                              onClick={() => activeUser ? setCheckoutStep("payment") : onRequireLogin()} 
+                              disabled={cart.length === 0} 
+                              className="w-full bg-btn text-btn-texto font-bold py-4 md:py-5 rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-lg disabled:opacity-50 flex justify-center items-center text-sm md:text-lg"
+                            >
                               Ir para Pagamento
                             </button>
                           </motion.div>
@@ -1220,7 +1315,6 @@ export default function Store({ currentUser, onLogout }) {
         </AnimatePresence>
       </div>
 
-      {/* MINI-MODAL DE ADIÇÃO RÁPIDA (Escolher a cor ou modelo do produto) */}
       <AnimatePresence>
         {quickAdd.isOpen && quickAdd.product && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setQuickAdd({ isOpen: false, product: null, selectedVariant: "" })}>
@@ -1267,7 +1361,6 @@ export default function Store({ currentUser, onLogout }) {
         )}
       </AnimatePresence>
 
-      {/* MODAL GIGANTE DE DETALHES DO PRODUTO (PÁGINA SEPARADA DO PRODUTO)*/}
       <AnimatePresence>
         {detailedProduct && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-0 sm:p-4 md:p-6 lg:p-10 bg-black/30 backdrop-blur-md" onClick={() => setDetailedProduct(null)}>
@@ -1310,7 +1403,6 @@ export default function Store({ currentUser, onLogout }) {
                   </div>
                 )}
 
-                {/* AVALIAÇÕES */}
                 <div className="mb-8 md:mb-10 border-t border-borda pt-6 md:pt-8">
                   <h3 className="text-sm md:text-base font-bold text-texto uppercase tracking-wider mb-4 md:mb-6">Avaliações Recentes</h3>
                   
@@ -1332,7 +1424,7 @@ export default function Store({ currentUser, onLogout }) {
                     )}
                   </div>
 
-                  {Parse.User.current() ? (
+                  {activeUser ? (
                     <form onSubmit={submitReview} className="bg-fundo p-4 md:p-5 rounded-xl md:rounded-2xl border border-borda">
                       <p className="text-xs font-bold text-texto mb-3">Deixe sua avaliação</p>
                       <div className="flex items-center gap-1 mb-4">
@@ -1349,7 +1441,8 @@ export default function Store({ currentUser, onLogout }) {
                     </form>
                   ) : (
                     <div className="bg-fundo p-4 rounded-xl border border-borda text-center">
-                      <p className="text-sm text-texto-sec">Faça login para deixar uma avaliação.</p>
+                      <p className="text-sm text-texto-sec mb-2">Faça login para deixar uma avaliação.</p>
+                      <button onClick={onRequireLogin} className="text-texto font-bold text-sm hover:underline">Fazer Login</button>
                     </div>
                   )}
                 </div>
@@ -1376,7 +1469,7 @@ export default function Store({ currentUser, onLogout }) {
               <h4 className="font-bold text-texto mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-wider">Navegação</h4>
               <ul className="space-y-2 md:space-y-3 text-xs md:text-sm text-texto-sec">
                 <li><button onClick={() => setCurrentView("store")} className="hover:text-texto transition-colors">Página Inicial</button></li>
-                <li><button onClick={() => setCurrentView("profile")} className="hover:text-texto transition-colors">Minha Conta</button></li>
+                <li><button onClick={() => activeUser ? setCurrentView("profile") : onRequireLogin()} className="hover:text-texto transition-colors">Minha Conta</button></li>
               </ul>
             </div>
             <div>
@@ -1408,7 +1501,6 @@ export default function Store({ currentUser, onLogout }) {
         </div>
       </footer>
 
-      {/* PÍLULA DE NOTIFICAÇÃO (Toast) */}
       <div className={`fixed bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 bg-btn text-btn-texto px-4 md:px-6 py-2.5 md:py-3 rounded-full shadow-2xl flex items-center gap-2 md:gap-3 transform transition-all duration-300 z-50 ${toast.show ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"}`}>
         <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
         <span className="font-bold text-xs md:text-sm whitespace-nowrap">{toast.message}</span>
