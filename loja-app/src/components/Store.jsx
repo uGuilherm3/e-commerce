@@ -83,21 +83,19 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     if (promoScrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = promoScrollRef.current;
       setCanScrollLeft(scrollLeft > 0);
-      // Uma margem de 2px para evitar bugs de arredondamento de pixel do navegador
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 2);
     }
   };
 
-  // Escuta se a tela mudar de tamanho para recalcular se as setas devem aparecer
   useEffect(() => {
     handlePromoScroll();
     window.addEventListener('resize', handlePromoScroll);
     return () => window.removeEventListener('resize', handlePromoScroll);
-  }, [products]); // Recalcula quando carregar os produtos
+  }, [products]); 
 
   const scrollPromo = (direction) => {
     if (promoScrollRef.current) {
-      const scrollAmount = 340; // Tamanho aproximado de 1 card + gap
+      const scrollAmount = 340; 
       promoScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
     }
   };
@@ -349,6 +347,10 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const promoProducts = useMemo(() => products.filter(p => getActivePromo(p).isActive), [products, getActivePromo, currentTime]);
   const bestSellers = useMemo(() => [...products].sort((a, b) => (b.get("salesCount") || 0) - (a.get("salesCount") || 0)).slice(0, 5), [products]);
   const newArrivals = useMemo(() => [...products].sort((a, b) => b.createdAt > a.createdAt ? 1 : -1).slice(0, 4), [products]);
+  
+  // 👇 FILTRA OS PRODUTOS SELECIONADOS PARA O BANNER SECUNDÁRIO
+  const infoBannerProducts = useMemo(() => products.filter(p => p.get("isInfoBannerProduct")), [products]);
+
   const categoriesList = useMemo(() => ["Tudo", ...new Set(products.map(p => p.get("category")).filter(Boolean))], [products]);
   const catalogProducts = useMemo(() => products.filter((p) => selectedCategory === "Tudo" || p.get("category") === selectedCategory), [products, selectedCategory]);
   const totalCatalogPages = Math.ceil(catalogProducts.length / 12);
@@ -421,7 +423,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
   const promoBannerTitle = storeSettings?.get("promoBannerTitle") || "Ofertas Especiais";
   const promoBannerDesc = storeSettings?.get("promoBannerDesc") || "Uma seleção exclusiva de peças com condições únicas. Não deixe para depois.";
-  const promoBannerImageUrl = storeSettings?.get("promoBannerImageUrl") || "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=2070&auto=format&fit=crop";
+  const promoBannerImageUrl = storeSettings?.get("promoBannerImageUrl") || "";
 
   useEffect(() => {
     if (bannersArray.length > 1) {
@@ -438,6 +440,50 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     }, 12000);
     return () => clearInterval(interval);
   }, [bannersArray.length, currentBannerIndex]);
+
+  // CARD PARA A SESSÃO DO BANNER SECUNDÁRIO (Agora aceita proporções diferentes de altura/largura)
+  const renderGridCard = useCallback((p, aspectClass = "aspect-[3/4]") => {
+    const isOutOfStock = p.get("stock") <= 0;
+    const promo = getActivePromo(p);
+    const isFav = favorites.includes(p.id);
+    const hasDetails = p.get("hasDetails");
+
+    return (
+      <div key={p.id} className="relative w-full h-full flex flex-col">
+        {/* A mágica acontece aqui: A classe de proporção vem por variável agora */}
+        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group w-full h-full ${aspectClass} relative rounded-[24px] md:rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
+          <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
+          
+          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-card/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/50 transition-colors duration-300 z-30 shadow-sm">
+            <Heart className="w-4 h-4 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+          </button>
+
+          {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
+          
+          {hasDetails && !isOutOfStock && (
+            <div className="absolute top-4 left-4 md:top-5 md:left-5 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+              <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
+            </div>
+          )}
+          
+          <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
+          <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-texto/30 via-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+          <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
+            <span className="text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-texto-sec drop-shadow-sm">{p.get("category")}</span>
+            <h3 className="font-serif italic text-2xl sm:text-3xl text-texto line-clamp-1 drop-shadow-sm">{p.get("name")}</h3>
+            <div className="flex items-center gap-2 mt-1 pointer-events-auto drop-shadow-sm">
+              {promo.isActive ? (<><span className="text-xs md:text-sm line-through text-texto-sec pr-1">R$ {p.get("price").toFixed(2)}</span><span className="font-bold text-texto text-xl sm:text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-texto text-xl sm:text-2xl">R$ {p.get("price").toFixed(2)}</span>)}
+            </div>
+            <button onClick={(e) => handleAddToCartClick(p, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-12 md:h-14 text-sm md:text-base bg-texto text-card font-bold rounded-xl md:rounded-2xl flex items-center justify-center hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 gap-2 shadow-lg">
+              {isOutOfStock ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Plus className="w-5 h-5 md:w-6 md:h-6" />}
+              {isOutOfStock ? "Esgotado" : "Adicionar à sacola"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
   const renderPromoBannerCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
@@ -826,18 +872,21 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                   )}
 
                   {promoProducts.length > 0 && (
-                    <section id="ofertas" className="mt-12 md:mt-24 relative w-full rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group bg-black">
-                      {/* Imagem de Fundo do Banner de Ofertas */}
-                      <img 
-                        src="https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=2070&auto=format&fit=crop" 
-                        alt="Ofertas Limitadas" 
-                        className="absolute inset-0 w-full h-full object-cover opacity-50 transition-transform duration-1000 group-hover:scale-105" 
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/20"></div>
+                    <section id="ofertas" className="mt-12 md:mt-24 relative w-full rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group bg-texto">
+                      
+                      {promoBannerImageUrl && (
+                        <>
+                          <img 
+                            src={promoBannerImageUrl} 
+                            alt={promoBannerTitle} 
+                            className="absolute inset-0 w-full h-full object-cover opacity-50 transition-transform duration-1000 group-hover:scale-105" 
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/20"></div>
+                        </>
+                      )}
 
                       <div className="relative z-10 flex flex-col lg:flex-row items-center p-6 sm:p-10 md:p-16 gap-8 md:gap-12 h-full">
                         
-                        {/* Textos do Banner (Esquerda) */}
                         <div className="w-full lg:w-1/3 flex flex-col justify-center text-left">
                           <div className="flex items-center gap-2 mb-4">
                             <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center backdrop-blur-md border border-amber-500/30">
@@ -845,14 +894,12 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                             </div>
                             <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-amber-500">Tempo Limitado</span>
                           </div>
-                          <h2 className="text-4xl sm:text-5xl md:text-6xl font-serif italic text-white mb-4 drop-shadow-md leading-tight">Ofertas Especiais</h2>
-                          <p className="text-sm md:text-base text-white/80 max-w-sm mb-8 font-light">Uma seleção exclusiva de peças com condições únicas. Não deixe para depois.</p>
+                          <h2 className={`text-4xl sm:text-5xl md:text-6xl font-serif italic mb-4 drop-shadow-md leading-tight ${promoBannerImageUrl ? 'text-white' : 'text-card'}`}>{promoBannerTitle}</h2>
+                          <p className={`text-sm md:text-base max-w-sm mb-8 font-light ${promoBannerImageUrl ? 'text-white/80' : 'text-card/80'}`}>{promoBannerDesc}</p>
                         </div>
 
-                        {/* CARDS COM BOTÕES DE NAVEGAÇÃO INTELIGENTE (Direita) */}
                         <div className="w-full lg:w-2/3 relative group/slider">
                           
-                          {/* Botão Flutuante Esquerda (Condicional) */}
                           {canScrollLeft && (
                             <button 
                               onClick={() => scrollPromo('left')} 
@@ -870,7 +917,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                             {promoProducts.map(renderPromoBannerCard)}
                           </div>
 
-                          {/* Botão Flutuante Direita (Condicional) */}
                           {canScrollRight && promoProducts.length > 1 && (
                             <button 
                               onClick={() => scrollPromo('right')} 
@@ -896,8 +942,10 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                     </div>
                   </section>
 
+                  {/* 👇 BANNER SECUNDÁRIO E SUA COLEÇÃO RELACIONADA 👇 */}
                   {infoBannerActive && (
                     <section className="mt-8 md:mt-24 mb-4">
+                      
                       <div className="relative w-full h-[35vh] md:h-[50vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group">
                         <img src={infoBannerImageUrl} alt={infoBannerTitle} loading="lazy" className="absolute inset-0 w-full h-full object-cover object-center" />
                         <div className="absolute inset-0 bg-black/40 transition-colors hover:bg-black/50 duration-500"></div>
@@ -911,8 +959,34 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                           )}
                         </div>
                       </div>
+
+                      {infoBannerProducts.length > 0 && (
+                        <div className="mt-8 md:mt-10">
+                          
+                          {/* PRIMEIRA FILEIRA: 5 Produtos (Layout Fixo e Mais Estreito) */}
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                            {infoBannerProducts.slice(0, 5).map(p => (
+                               <div key={p.id} className="w-full">{renderGridCard(p, "aspect-[3/4]")}</div>
+                            ))}
+                          </div>
+                          
+                          {/* SEGUNDA FILEIRA EM DIANTE: Flexível e com Altura Reduzida */}
+                          {infoBannerProducts.length > 5 && (
+                            <div className="flex flex-wrap gap-4 md:gap-6 mt-4 md:mt-6">
+                              {infoBannerProducts.slice(5).map(p => (
+                                <div key={p.id} className="flex-1 min-w-[150px] sm:min-w-[200px] md:min-w-[280px]">
+                                   {/* Passamos aspect-square / aspect-[4/3] para achatá-los! */}
+                                   {renderGridCard(p, "aspect-square md:aspect-[4/3]")}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                        </div>
+                      )}
                     </section>
                   )}
+                  {/* 👆 FIM DO BANNER SECUNDÁRIO 👆 */}
 
                   <section id="catalogo" className="border-t border-borda pt-8 md:pt-12 mt-8 md:mt-12 relative">
                     {categoriesList.length > 1 && (
@@ -930,7 +1004,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                     )}
                     
                     <div className="relative w-full">
-                      {/* BOTÃO FLUTUANTE ESQUERDA (Jogado mais para fora) */}
                       {currentPage > 1 && (
                         <button 
                           onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} 
@@ -954,7 +1027,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                         </motion.div>
                       </AnimatePresence>
 
-                      {/* BOTÃO FLUTUANTE DIREITA (Jogado mais para fora) */}
                       {currentPage < totalCatalogPages && (
                         <button 
                           onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} 
@@ -965,30 +1037,17 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                       )}
                     </div>
 
-                    {/* NAVEGAÇÃO MOBILE (Escondida no Desktop) */}
                     {totalCatalogPages > 1 && (
                       <div className="md:hidden flex justify-center items-center gap-4 mt-10">
-                        
-                        <button 
-                          onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} 
-                          disabled={currentPage === 1} 
-                          className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm"
-                        >
+                        <button onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} disabled={currentPage === 1} className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm">
                           <ArrowLeft className="w-5 h-5" />
                         </button>
-                        
                         <span className="text-sm font-bold text-texto-sec tracking-wider">
                           <span className="text-texto">{currentPage}</span> / {totalCatalogPages}
                         </span>
-                        
-                        <button 
-                          onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} 
-                          disabled={currentPage === totalCatalogPages} 
-                          className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm rotate-180"
-                        >
+                        <button onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} disabled={currentPage === totalCatalogPages} className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm rotate-180">
                           <ArrowLeft className="w-5 h-5" />
                         </button>
-
                       </div>
                     )}
                   </section>

@@ -5,7 +5,7 @@ import { ArrowLeft, Loader2, TrendingUp, DollarSign, Package, Calendar, Clock, S
 const DEFAULT_PRODUCT_IMG = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop";
 const DEFAULT_INFO_BANNER_IMG = "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop";
 const DEFAULT_CAROUSEL_IMG = "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop";
-const DEFAULT_PROMO_BANNER_IMG = "https://images.unsplash.com/photo-1469334031218-e382a71b716b?q=80&w=2070&auto=format&fit=crop";
+const DEFAULT_PROMO_BANNER_IMG = ""; 
 
 export default function AdminPanel({ onBack }) {
   const [activeTab, setActiveTab] = useState("overview");
@@ -19,18 +19,17 @@ export default function AdminPanel({ onBack }) {
   const [price, setPrice] = useState("");
   const [stock, setStock] = useState("");
   
-  // ESTADOS PARA MULTI-CATEGORIAS
   const [selectedCategories, setSelectedCategories] = useState([]); 
   const [categoryInput, setCategoryInput] = useState("");
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
 
-  // ESTADOS PARA VARIANTES
   const [variantsList, setVariantsList] = useState([]); 
   const [variantInput, setVariantInput] = useState("");
 
   const [discountPrice, setDiscountPrice] = useState("");
   const [discountEndsAt, setDiscountEndsAt] = useState("");
   const [hasDetails, setHasDetails] = useState(false);
+  const [prodInfoBanner, setProdInfoBanner] = useState(false); // NOVO ESTADO
   const [description, setDescription] = useState("");
   const [detailsMediaFile, setDetailsMediaFile] = useState(null);
   const [currentDetailsMediaUrl, setCurrentDetailsMediaUrl] = useState("");
@@ -41,7 +40,6 @@ export default function AdminPanel({ onBack }) {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // ESTADOS DO CARROSSEL E SETTINGS
   const [settingsId, setSettingsId] = useState(null);
   const [banners, setBanners] = useState([]);
   const [infoBannerActive, setInfoBannerActive] = useState(true);
@@ -53,7 +51,6 @@ export default function AdminPanel({ onBack }) {
   const [linkInfoBannerUrl, setLinkInfoBannerUrl] = useState(""); 
   const [savingSettings, setSavingSettings] = useState(false);
 
-  // 👇 NOVOS ESTADOS PARA O BANNER DE OFERTAS
   const [promoBannerTitle, setPromoBannerTitle] = useState("");
   const [promoBannerDesc, setPromoBannerDesc] = useState("");
   const [promoBannerFile, setPromoBannerFile] = useState(null);
@@ -148,7 +145,6 @@ export default function AdminPanel({ onBack }) {
         setInfoBannerBtn(s.get("infoBannerBtn") || "");
         setCurrentInfoBannerUrl(s.get("infoBannerImageUrl") || DEFAULT_INFO_BANNER_IMG);
         
-        // 👇 PUXANDO OS DADOS DO BANNER DE OFERTAS
         setPromoBannerTitle(s.get("promoBannerTitle") || "");
         setPromoBannerDesc(s.get("promoBannerDesc") || "");
         setCurrentPromoBannerUrl(s.get("promoBannerImageUrl") || DEFAULT_PROMO_BANNER_IMG);
@@ -175,6 +171,7 @@ export default function AdminPanel({ onBack }) {
       p.set("name", name); p.set("price", Number(price)); p.set("stock", Number(stock));
       p.set("categories", selectedCategories); p.set("category", selectedCategories[0]);
       p.set("variants", variantsList); p.set("hasDetails", hasDetails);
+      p.set("isInfoBannerProduct", prodInfoBanner); // SALVA O PRODUTO NA COLEÇÃO
 
       if (discountPrice && discountEndsAt) { p.set("discountPrice", Number(discountPrice)); p.set("discountEndsAt", new Date(discountEndsAt)); }
       else { p.unset("discountPrice"); p.unset("discountEndsAt"); }
@@ -194,7 +191,7 @@ export default function AdminPanel({ onBack }) {
 
   const resetForm = () => {
     setName(""); setPrice(""); setStock(""); setSelectedCategories([]); setVariantsList([]); setVariantInput("");
-    setDiscountPrice(""); setDiscountEndsAt(""); setHasDetails(false); setDescription(""); setDetailsMediaFile(null);
+    setDiscountPrice(""); setDiscountEndsAt(""); setHasDetails(false); setProdInfoBanner(false); setDescription(""); setDetailsMediaFile(null);
     setLinkDetailsMediaUrl(""); setImageFile(null); setLinkImageUrl(""); setEditingId(null);
   };
 
@@ -204,7 +201,9 @@ export default function AdminPanel({ onBack }) {
     setVariantsList(p.get("variants") || []); setDiscountPrice(p.get("discountPrice") || "");
     const d = p.get("discountEndsAt");
     if (d) { const off = new Date().getTimezoneOffset() * 60000; setDiscountEndsAt(new Date(d - off).toISOString().slice(0, 16)); }
-    setHasDetails(p.get("hasDetails") || false); setDescription(p.get("description") || "");
+    setHasDetails(p.get("hasDetails") || false); 
+    setProdInfoBanner(p.get("isInfoBannerProduct") || false);
+    setDescription(p.get("description") || "");
     setCurrentImageUrl(p.get("imageUrl")); setEditingId(p.id); setActiveTab("products");
   };
 
@@ -230,11 +229,16 @@ export default function AdminPanel({ onBack }) {
       if (infoBannerFile) { const f = new Parse.File("info", infoBannerFile); await f.save(); s.set("infoBannerImageUrl", f.url()); }
       else if (linkInfoBannerUrl.trim()) s.set("infoBannerImageUrl", linkInfoBannerUrl.trim());
 
-      // 👇 SALVANDO OS DADOS DO BANNER DE OFERTAS
       s.set("promoBannerTitle", promoBannerTitle);
       s.set("promoBannerDesc", promoBannerDesc);
-      if (promoBannerFile) { const f = new Parse.File("promo", promoBannerFile); await f.save(); s.set("promoBannerImageUrl", f.url()); }
-      else if (linkPromoBannerUrl.trim()) s.set("promoBannerImageUrl", linkPromoBannerUrl.trim());
+      
+      if (promoBannerFile) { 
+        const f = new Parse.File("promo", promoBannerFile); 
+        await f.save(); 
+        s.set("promoBannerImageUrl", f.url()); 
+      } else {
+        s.set("promoBannerImageUrl", linkPromoBannerUrl.trim()); 
+      }
 
       await s.save(); alert("Aparência da loja atualizada!"); fetchSettings();
     } catch (err) { alert(err.message); } finally { setSavingSettings(false); }
@@ -381,54 +385,27 @@ export default function AdminPanel({ onBack }) {
                     <div>
                       <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Categorias</label>
                       <div className="flex flex-col gap-2">
-                        
-                        {/* INPUTS DE CATEGORIA */}
                         <div className="flex items-center gap-2">
                           {isAddingNewCategory ? (
-                            <input 
-                              type="text" 
-                              placeholder="Nova categoria..." 
-                              value={categoryInput} 
-                              autoFocus 
-                              onChange={(e) => setCategoryInput(e.target.value)} 
-                              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategoryTag(categoryInput))} 
-                              className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none" 
-                            />
+                            <input type="text" placeholder="Nova categoria..." value={categoryInput} autoFocus onChange={(e) => setCategoryInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategoryTag(categoryInput))} className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none" />
                           ) : (
-                            <select 
-                              value="" 
-                              onChange={(e) => handleAddCategoryTag(e.target.value)} 
-                              className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none bg-white"
-                            >
+                            <select value="" onChange={(e) => handleAddCategoryTag(e.target.value)} className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none bg-white">
                               <option value="">Selecione...</option>
                               {availableCategories.filter(c => !selectedCategories.includes(c)).map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                           )}
-                          <button 
-                            type="button" 
-                            onClick={() => setIsAddingNewCategory(!isAddingNewCategory)} 
-                            className="p-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors shrink-0"
-                          >
+                          <button type="button" onClick={() => setIsAddingNewCategory(!isAddingNewCategory)} className="p-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors shrink-0">
                             {isAddingNewCategory ? <X className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
                           </button>
                         </div>
                         
-                        {/* TAGS DE CATEGORIA COM BOTÃO DE EXCLUIR CORRIGIDO */}
                         <div className="flex flex-wrap gap-2 mt-1">
                           {selectedCategories.map(c => (
                             <span key={c} className="inline-flex items-center gap-1 px-3 py-1 bg-neutral-900 text-white text-[10px] font-bold uppercase rounded-md shadow-sm">
-                              {c} 
-                              <button 
-                                type="button" 
-                                onClick={(e) => { e.preventDefault(); setSelectedCategories(prev => prev.filter(x => x !== c)); }} 
-                                className="hover:text-red-400 ml-1 focus:outline-none"
-                              >
-                                <X className="w-3 h-3 pointer-events-none" />
-                              </button>
+                              {c} <button type="button" onClick={(e) => { e.preventDefault(); setSelectedCategories(prev => prev.filter(x => x !== c)); }} className="hover:text-red-400 ml-1 focus:outline-none"><X className="w-3 h-3 pointer-events-none" /></button>
                             </span>
                           ))}
                         </div>
-
                       </div>
                     </div>
 
@@ -436,42 +413,19 @@ export default function AdminPanel({ onBack }) {
                     <div>
                       <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Cores ou Modelos (Opcional)</label>
                       <div className="flex flex-col gap-2">
-                        
-                        {/* INPUT DE VARIANTE */}
                         <div className="flex items-center gap-2">
-                          <input 
-                            type="text" 
-                            placeholder="Azul, P, etc..." 
-                            value={variantInput} 
-                            onChange={(e) => setVariantInput(e.target.value)} 
-                            onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddVariantTag())} 
-                            className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none" 
-                          />
-                          <button 
-                            type="button" 
-                            onClick={handleAddVariantTag} 
-                            className="p-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors shrink-0"
-                          >
+                          <input type="text" placeholder="Azul, P, etc..." value={variantInput} onChange={(e) => setVariantInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddVariantTag())} className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none" />
+                          <button type="button" onClick={handleAddVariantTag} className="p-2 bg-neutral-900 text-white rounded-lg hover:bg-neutral-800 transition-colors shrink-0">
                             <Plus className="w-5 h-5" />
                           </button>
                         </div>
-                        
-                        {/* TAGS DE VARIANTE COM BOTÃO DE EXCLUIR CORRIGIDO */}
                         <div className="flex flex-wrap gap-2 mt-1">
                           {variantsList.map(v => (
                             <span key={v} className="inline-flex items-center gap-1 px-3 py-1 bg-neutral-900 text-white text-[10px] font-bold uppercase rounded-md shadow-sm">
-                              {v} 
-                              <button 
-                                type="button" 
-                                onClick={(e) => { e.preventDefault(); setVariantsList(prev => prev.filter(x => x !== v)); }} 
-                                className="hover:text-red-400 ml-1 focus:outline-none"
-                              >
-                                <X className="w-3 h-3 pointer-events-none" />
-                              </button>
+                              {v} <button type="button" onClick={(e) => { e.preventDefault(); setVariantsList(prev => prev.filter(x => x !== v)); }} className="hover:text-red-400 ml-1 focus:outline-none"><X className="w-3 h-3 pointer-events-none" /></button>
                             </span>
                           ))}
                         </div>
-
                       </div>
                     </div>
                   </div>
@@ -499,6 +453,15 @@ export default function AdminPanel({ onBack }) {
                         </div>
                       </div>
                     )}
+                  </div>
+
+                  {/* NOVO: MARCAR NO BANNER SECUNDÁRIO */}
+                  <div className="flex flex-col gap-4 p-4 border border-emerald-100 bg-emerald-50/50 rounded-lg transition-all">
+                    <div className="flex items-center gap-3">
+                      <input type="checkbox" id="prodInfoBanner" checked={prodInfoBanner} onChange={(e) => setProdInfoBanner(e.target.checked)} className="w-5 h-5 text-emerald-600 rounded cursor-pointer focus:ring-emerald-500 border-emerald-300" />
+                      <label htmlFor="prodInfoBanner" className="text-sm font-bold text-emerald-800 cursor-pointer uppercase tracking-wider">🖼️ Exibir na Coleção do Banner Secundário</label>
+                    </div>
+                    <p className="text-[10px] text-emerald-600/80 ml-8 -mt-2">Marque para que este produto apareça em destaque logo abaixo da "Coleção de Outono".</p>
                   </div>
 
                   {/* FOTO PRINCIPAL E BOTÕES */}
@@ -533,6 +496,7 @@ export default function AdminPanel({ onBack }) {
                               {p.get("name")}
                               {isPromoActive && <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Oferta</span>}
                               {p.get("hasDetails") && <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Premium</span>}
+                              {p.get("isInfoBannerProduct") && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wide">Banner Secundário</span>}
                             </p>
                             <div className="text-neutral-500 text-sm flex items-center gap-2">
                               {isPromoActive ? (<><span className="line-through text-neutral-300">R$ {p.get("price").toFixed(2)}</span><span className="text-red-500 font-bold">R$ {dp.toFixed(2)}</span></>) : (<span>R$ {p.get("price")?.toFixed(2)}</span>)}
@@ -604,7 +568,6 @@ export default function AdminPanel({ onBack }) {
                     </div>
                   </div>
 
-                  {/* 👇 NOVO: BANNER DE OFERTAS ESPECIAIS 👇 */}
                   <div className="pt-10 border-t border-neutral-200">
                     <div className="flex justify-between items-start mb-6">
                       <div>
@@ -616,7 +579,9 @@ export default function AdminPanel({ onBack }) {
                     </div>
                     
                     <div className="w-full h-32 rounded-xl overflow-hidden relative shadow-sm border border-neutral-200 bg-neutral-900 mb-6">
-                      <img src={promoBannerFile ? URL.createObjectURL(promoBannerFile) : currentPromoBannerUrl} alt="Preview Ofertas" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                      {(promoBannerFile || currentPromoBannerUrl || linkPromoBannerUrl) && (
+                        <img src={promoBannerFile ? URL.createObjectURL(promoBannerFile) : (linkPromoBannerUrl || currentPromoBannerUrl)} alt="Preview Ofertas" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                      )}
                       <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                         <h3 className="text-xl font-serif italic text-white mb-1">{promoBannerTitle || "Ofertas Especiais"}</h3>
                         <p className="text-[10px] text-white/80">{promoBannerDesc || "Uma seleção exclusiva de peças..."}</p>
@@ -633,16 +598,20 @@ export default function AdminPanel({ onBack }) {
                         <textarea value={promoBannerDesc} onChange={(e) => setPromoBannerDesc(e.target.value)} rows="2" className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none resize-none text-sm" placeholder="Ex: Uma seleção exclusiva..." />
                       </div>
                       <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Imagem de Fundo (Recomendado: Foto escura/sóbria)</label>
+                        <div className="flex justify-between items-end mb-1">
+                          <label className="block text-xs font-medium text-neutral-500 uppercase">Imagem de Fundo (Deixe vazio p/ cor do tema)</label>
+                          {(promoBannerFile || currentPromoBannerUrl || linkPromoBannerUrl) && (
+                            <button type="button" onClick={() => { setPromoBannerFile(null); setCurrentPromoBannerUrl(""); setLinkPromoBannerUrl(""); const fi = document.getElementById('promo-banner-file'); if (fi) fi.value = ""; }} className="flex items-center gap-1 text-[10px] text-red-500 hover:text-red-700 font-bold transition-colors uppercase tracking-wider bg-red-50 px-2 py-1 rounded-md"><Trash2 className="w-3 h-3" /> Remover Imagem</button>
+                          )}
+                        </div>
                         <div className="flex flex-col gap-2 p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
-                          <input type="file" accept="image/*" onChange={(e) => {setPromoBannerFile(e.target.files[0]); setCurrentPromoBannerUrl(""); setLinkPromoBannerUrl("");}} className="w-full text-xs" />
+                          <input id="promo-banner-file" type="file" accept="image/*" onChange={(e) => {setPromoBannerFile(e.target.files[0]); setCurrentPromoBannerUrl(""); setLinkPromoBannerUrl("");}} className="w-full text-xs" />
                           <div className="flex items-center gap-2"><div className="flex-1 h-px bg-neutral-200"></div><span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">OU LINK</span><div className="flex-1 h-px bg-neutral-200"></div></div>
                           <input type="url" placeholder="https://..." value={linkPromoBannerUrl} onChange={(e) => {setLinkPromoBannerUrl(e.target.value); setPromoBannerFile(null);}} className="w-full px-3 py-2 text-sm bg-white border border-neutral-200 rounded-md outline-none" />
                         </div>
                       </div>
                     </div>
                   </div>
-                  {/* 👆 FIM DO NOVO BANNER DE OFERTAS 👆 */}
 
                   <div className="pt-10 border-t border-neutral-200">
                     <div className="flex justify-between items-start mb-2">
