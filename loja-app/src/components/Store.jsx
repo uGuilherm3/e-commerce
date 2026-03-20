@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Parse from "../parseSetup";
-import { Search, LogOut, ShoppingBag, X, Plus, Minus, Trash2, CheckCircle, Loader2, User, Package, Settings, Instagram, Facebook, Twitter, Timer, Menu, CreditCard, QrCode, Truck, MessageCircle, Heart, TrendingUp, Sun, Moon, ArrowLeft, Star, Sparkles, Camera } from "lucide-react";
+import { Search, LogOut, ShoppingBag, X, Plus, Minus, Trash2, CheckCircle, Loader2, User, Package, Settings, Instagram, Facebook, Twitter, Timer, Menu, CreditCard, QrCode, Truck, MessageCircle, Heart, TrendingUp, Sun, Moon, ArrowLeft, Star, Sparkles, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, MapPin } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 // =========================================
@@ -10,7 +10,7 @@ const PromoTimer = ({ endsAt }) => {
   const [now, setNow] = useState(new Date());
   
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 1000);
+    const interval = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -20,10 +20,9 @@ const PromoTimer = ({ endsAt }) => {
   const days = Math.floor(total / (1000 * 60 * 60 * 24));
   const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
   const minutes = Math.floor((total / 1000 / 60) % 60);
-  const seconds = Math.floor((total / 1000) % 60);
   
   if (days > 0) return <span className="text-white font-bold text-[10px] tracking-widest uppercase">Termina em {days}d {hours}h</span>;
-  return <span className="text-white font-bold text-[10px] tracking-widest uppercase">Termina em {hours}h {minutes}m {seconds}s</span>;
+  return <span className="text-white font-bold text-[10px] tracking-widest uppercase">Termina em {hours}h {minutes}m</span>;
 };
 
 export default function Store({ currentUser, onLogout, onRequireLogin }) {
@@ -35,7 +34,10 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [storeSettings, setStoreSettings] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [storeError, setStoreError] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
 
   const [cart, setCart] = useState([]);
@@ -51,13 +53,26 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [profileTab, setProfileTab] = useState("data"); 
   const [orders, setOrders] = useState([]);
-  const [favorites, setFavorites] = useState(activeUser?.get("favorites") || []);
   
   const [userName, setUserName] = useState(activeUser?.get("name") || "");
   const [userPhone, setUserPhone] = useState(activeUser?.get("phone") || "");
   const [userAvatar, setUserAvatar] = useState(activeUser?.get("avatar")?.url() || null);
+  const [favorites, setFavorites] = useState(activeUser?.get("favorites") || []);
   const [avatarFile, setAvatarFile] = useState(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [detailedQuantity, setDetailedQuantity] = useState(1);
+
+  // Efeito de proteção de sessão
+  useEffect(() => {
+    if (!activeUser) {
+      setUserName(""); setUserPhone(""); setUserAvatar(null); setFavorites([]);
+    } else {
+      setUserName(activeUser.get("name") || "");
+      setUserPhone(activeUser.get("phone") || "");
+      setUserAvatar(activeUser.get("avatar")?.url() || null);
+      setFavorites(activeUser.get("favorites") || []);
+    }
+  }, [activeUser]);
 
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [isSubscribing, setIsSubscribing] = useState(false);
@@ -72,9 +87,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
   const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
   
-  // =========================================================
-  // CONTROLE DE ROLAGEM INTELIGENTE PARA O BANNER DE OFERTAS
-  // =========================================================
   const promoScrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -86,6 +98,20 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 2);
     }
   };
+
+  useEffect(() => {
+    if (detailedProduct) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'auto';
+    }
+    return () => { document.body.style.overflow = 'auto'; }; 
+  }, [detailedProduct]);
+
+  // 👇 EFEITO ELEVADOR: Rola para o topo ao mudar de tela ou de aba
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentView, profileTab]);
 
   useEffect(() => {
     handlePromoScroll();
@@ -123,8 +149,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   useEffect(() => {
     fetchProducts();
     fetchStoreSettings();
-    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
-    return () => clearInterval(timer);
   }, []);
 
   useEffect(() => {
@@ -139,6 +163,8 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   }, [currentView, profileTab]);
 
   const fetchProducts = async () => {
+    setIsLoading(true);
+    setStoreError(false);
     const query = new Parse.Query("Product");
     try {
       const results = await query.find();
@@ -156,7 +182,11 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
         } catch (e) {}
       }
       setIsCartLoaded(true); 
-    } catch (error) {}
+    } catch (error) {
+      setStoreError(true);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const fetchStoreSettings = async () => {
@@ -193,7 +223,9 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       await userToUpdate.save();
       if (userToUpdate.get("avatar")) { setUserAvatar(userToUpdate.get("avatar").url()); }
       showToast("Dados atualizados com sucesso!");
-    } catch (error) { alert("Erro ao salvar: " + error.message); } 
+    } catch (error) { 
+      showToast("Erro ao salvar perfil."); 
+    } 
     finally { setIsSavingProfile(false); setAvatarFile(null); }
   };
 
@@ -205,11 +237,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const toggleFavorite = useCallback(async (productId, e) => {
     e.stopPropagation(); 
     const safeUser = Parse.User.current();
-    
-    if (!safeUser) { 
-      onRequireLogin(); 
-      return; 
-    }
+    if (!safeUser) { onRequireLogin(); return; }
 
     let newFavorites = [...favorites];
     if (newFavorites.includes(productId)) {
@@ -249,7 +277,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
         showToast("Inscrição realizada com sucesso! 🎉");
         setNewsletterEmail("");
       }
-    } catch (error) { showToast("Erro ao assinar: " + error.message); } 
+    } catch (error) { showToast("Erro ao assinar."); } 
     finally { setIsSubscribing(false); }
   };
 
@@ -260,7 +288,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       query.descending("createdAt");
       query.limit(10); 
       setProductReviews(await query.find());
-    } catch (error) { console.error("Erro avaliações", error); }
+    } catch (error) {}
   };
 
   const submitReview = async (e) => {
@@ -281,7 +309,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       setProductReviews([review, ...productReviews]);
       setNewReviewComment(""); 
       showToast("Avaliação enviada!");
-    } catch (error) { alert("Erro: " + error.message); } 
+    } catch (error) { showToast("Erro ao avaliar."); } 
     finally { setIsSubmittingReview(false); }
   };
 
@@ -296,24 +324,25 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     if (!product) return;
     const variants = product.get("variants") || [];
     setDetailedVariant(variants.length > 0 ? variants[0] : "");
+    setDetailedQuantity(1); // Reseta a quantidade
     setDetailedProduct(product);
     setNewReviewRating(5); setNewReviewComment(""); setProductReviews([]);
     fetchReviews(product);
   }, []);
 
-  const processAddToCart = useCallback((product, variant) => {
+  const processAddToCart = useCallback((product, variant, qtyToAdd = 1) => {
     const stock = product.get("stock") || 0;
     if (stock <= 0) { showToast("Produto esgotado!"); return; }
     
     setCart((prevCart) => {
       const totalOfThisProductInCart = prevCart.filter(item => item.product.id === product.id).reduce((sum, item) => sum + item.quantity, 0);
-      if (totalOfThisProductInCart >= stock) {
+      if (totalOfThisProductInCart + qtyToAdd > stock) {
         showToast(`Temos apenas ${stock} unidades!`);
         return prevCart;
       }
       const existingItem = prevCart.find(item => item.product.id === product.id && item.variant === variant);
-      if (existingItem) { return prevCart.map(item => (item.product.id === product.id && item.variant === variant) ? { ...item, quantity: item.quantity + 1 } : item); }
-      return [...prevCart, { product, quantity: 1, variant }];
+      if (existingItem) { return prevCart.map(item => (item.product.id === product.id && item.variant === variant) ? { ...item, quantity: item.quantity + qtyToAdd } : item); }
+      return [...prevCart, { product, quantity: qtyToAdd, variant }];
     });
     setQuickAdd({ isOpen: false, product: null, selectedVariant: "" });
     setDetailedProduct(null); 
@@ -347,8 +376,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const promoProducts = useMemo(() => products.filter(p => getActivePromo(p).isActive), [products, getActivePromo, currentTime]);
   const bestSellers = useMemo(() => [...products].sort((a, b) => (b.get("salesCount") || 0) - (a.get("salesCount") || 0)).slice(0, 5), [products]);
   const newArrivals = useMemo(() => [...products].sort((a, b) => b.createdAt > a.createdAt ? 1 : -1).slice(0, 4), [products]);
-  
-  // 👇 FILTRA OS PRODUTOS SELECIONADOS PARA O BANNER SECUNDÁRIO
   const infoBannerProducts = useMemo(() => products.filter(p => p.get("isInfoBannerProduct")), [products]);
 
   const categoriesList = useMemo(() => ["Tudo", ...new Set(products.map(p => p.get("category")).filter(Boolean))], [products]);
@@ -360,9 +387,11 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const cartTotal = useMemo(() => cart.reduce((total, item) => total + (getActivePromo(item.product).price * item.quantity), 0), [cart, getActivePromo]);
   const cartItemsCount = useMemo(() => cart.reduce((count, item) => count + item.quantity, 0), [cart]);
 
-
   const submitFinalCheckout = async () => {
+    if (isProcessingOrder) return;
+    setIsProcessingOrder(true);
     setCheckoutStep("processing");
+    
     try {
       const productsToUpdate = []; const orderItems = []; const quantityMap = {};
       cart.forEach(item => { quantityMap[item.product.id] = (quantityMap[item.product.id] || 0) + item.quantity; });
@@ -399,10 +428,20 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       await Parse.Object.saveAll(productsToUpdate);
       setCart([]); localStorage.removeItem("florESol_cart"); setCheckoutStep("success"); 
       fetchProducts(); if (profileTab === "orders") fetchOrders();
-    } catch (error) { alert("Erro: " + error.message); setCheckoutStep("payment"); }
+      
+    } catch (error) { 
+      showToast("Erro: " + error.message); 
+      setCheckoutStep("payment"); 
+    } finally {
+      setIsProcessingOrder(false); 
+    }
   };
 
-  const closeCart = () => { setCurrentView("store"); setTimeout(() => { setCheckoutStep("cart"); setLastOrderId(null); setPixData(null); }, 400); };
+  const closeCart = () => { 
+    window.scrollTo(0, 0); // Sobe a tela instantaneamente antes de animar
+    setCurrentView("store"); 
+    setTimeout(() => { setCheckoutStep("cart"); setLastOrderId(null); setPixData(null); }, 400); 
+  };
 
   const handleWhatsAppRedirect = () => {
     const texto = `${activeUser?.get("name") ? `Olá, me chamo ${activeUser.get("name")}!` : "Olá!"} Acabei de fazer um pedido (ID: ${lastOrderId}).\n\nMétodo: *${paymentMethod === "pix" ? "PIX" : "Pagamento na Entrega"}*.`;
@@ -410,7 +449,14 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     closeCart();
   };
 
-  const handleCopyPix = () => { if (pixData?.qrCode) { navigator.clipboard.writeText(pixData.qrCode); showToast("Código copiado!"); } };
+  const handleCopyPix = () => { 
+    if (pixData?.qrCode) { 
+      navigator.clipboard.writeText(pixData.qrCode); 
+      setIsCopied(true);
+      showToast("Código copiado!"); 
+      setTimeout(() => setIsCopied(false), 2000);
+    } 
+  };
 
   const tabVariants = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }, exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: "easeIn" } } };
 
@@ -433,38 +479,70 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     }
   }, [currentBannerIndex, bannersArray]);
 
+  // MOTOR INTELIGENTE DO BANNER (Substitui o antigo relógio de 12s)
   useEffect(() => {
     if (bannersArray.length <= 1) return;
-    const interval = setInterval(() => {
-      setCurrentBannerIndex((prev) => (prev + 1) % bannersArray.length);
-    }, 12000);
-    return () => clearInterval(interval);
-  }, [bannersArray.length, currentBannerIndex]);
+    
+    let interval;
+    
+    const handleScroll = () => {
+      // Se rolou menos de 600px para baixo, liga o motor
+      if (window.scrollY < 600) {
+        if (!interval) {
+          interval = setInterval(() => {
+            setCurrentBannerIndex((prev) => (prev + 1) % bannersArray.length);
+          }, 9000);
+        }
+      } else {
+        // Se desceu a tela, desliga o motor para poupar bateria
+        if (interval) {
+          clearInterval(interval);
+          interval = null;
+        }
+      }
+    };
 
-  // CARD PARA A SESSÃO DO BANNER SECUNDÁRIO (Agora aceita proporções diferentes de altura/largura)
-  const renderGridCard = useCallback((p, aspectClass = "aspect-[3/4]") => {
+    // Roda uma vez assim que a página carrega
+    handleScroll();
+    
+    // Fica vigiando a rolagem do mouse/dedo
+    window.addEventListener("scroll", handleScroll);
+    
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      if (interval) clearInterval(interval);
+    };
+  }, [bannersArray.length]);
+
+  // =========================================================
+  // NOVO CARD PADRÃO OTIMIZADO (Substitui 3 cards repetidos)
+  // =========================================================
+  const renderStandardCard = useCallback((p, config = {}) => {
+    const { aspectClass = "aspect-[3/4]", tag = null, wrapClass = "w-full" } = config;
     const isOutOfStock = p.get("stock") <= 0;
     const promo = getActivePromo(p);
     const isFav = favorites.includes(p.id);
     const hasDetails = p.get("hasDetails");
 
     return (
-      <div key={p.id} className="relative w-full h-full flex flex-col">
-        {/* A mágica acontece aqui: A classe de proporção vem por variável agora */}
-        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group w-full h-full ${aspectClass} relative rounded-[24px] md:rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
+      <div key={p.id} className={`relative shrink-0 ${wrapClass} snap-center pb-4 pt-2`}>
+        <div onClick={() => !isOutOfStock && openProductDetails(p)} className={`group w-full h-full ${aspectClass} relative rounded-[24px] md:rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
           <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
           
+          <div className="absolute top-4 left-4 md:top-5 md:left-5 flex items-center gap-2 z-30 pointer-events-none">
+            {tag && <div className="bg-texto text-card text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md">{tag}</div>}
+            {hasDetails && !isOutOfStock && (
+              <div className={`backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 transition-opacity ${tag ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100 bg-white/30'}`}>
+                <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
+              </div>
+            )}
+          </div>
+
           <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-card/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/50 transition-colors duration-300 z-30 shadow-sm">
             <Heart className="w-4 h-4 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
           </button>
 
           {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
-          
-          {hasDetails && !isOutOfStock && (
-            <div className="absolute top-4 left-4 md:top-5 md:left-5 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-              <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
-            </div>
-          )}
           
           <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
           <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-texto/30 via-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -485,6 +563,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     );
   }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
+  // O card da Promoção tem layout diferente (fundo escuro gradient), então mantemos separado
   const renderPromoBannerCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
     const promo = getActivePromo(p);
@@ -493,8 +572,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
     return (
       <div key={p.id} className="relative shrink-0 w-[80vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-[340px] snap-center pb-4 pt-2">
-        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group/card relative aspect-[3/4] w-full overflow-hidden rounded-[24px] md:rounded-[32px] shadow-2xl border border-white/10 transition-all duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer hover:shadow-white/5' : ''}`}>
-          
+        <div onClick={() => !isOutOfStock && openProductDetails(p)} className={`group/card relative aspect-[3/4] w-full overflow-hidden rounded-[24px] md:rounded-[32px] shadow-2xl border border-white/10 transition-all duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer hover:shadow-white/5' : ''}`}>
           <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
           
           <div className="absolute top-4 left-4 md:top-5 md:left-5 flex flex-col gap-2 z-30 pointer-events-none">
@@ -540,93 +618,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     );
   }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
 
-  const renderNewArrivalCard = useCallback((p) => {
-    const isOutOfStock = p.get("stock") <= 0;
-    const promo = getActivePromo(p);
-    const isFav = favorites.includes(p.id);
-    const hasDetails = p.get("hasDetails");
-
-    return (
-      <div key={p.id} className="relative shrink-0 w-[80vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-none snap-center pb-6 md:pb-8 pt-2">
-        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group relative aspect-[3/4] w-full overflow-hidden rounded-[24px] md:rounded-[32px] shadow-sm transition-shadow duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
-          <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
-          
-          <div className="absolute top-4 left-4 md:top-5 md:left-5 flex items-center gap-2 z-30 pointer-events-none">
-            <div className="bg-texto text-card text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md">Novo</div>
-            {hasDetails && !isOutOfStock && (
-              <div className="bg/30 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
-              </div>
-            )}
-          </div>
-
-          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-card/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/30 transition-colors duration-300 z-30 shadow-sm">
-            <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
-          </button>
-
-          {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
-
-          <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
-          <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-texto/30 via-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-          <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
-            <span className="text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-texto-sec drop-shadow-sm">{p.get("category")}</span>
-            <h3 className="font-serif italic text-2xl sm:text-3xl text-texto line-clamp-1 drop-shadow-sm">{p.get("name")}</h3>
-            <div className="flex items-center gap-2 mt-1 pointer-events-auto drop-shadow-sm">
-              {promo.isActive ? (<><span className="text-xs md:text-sm line-through text-texto-sec pr-1">R$ {p.get("price").toFixed(2)}</span><span className="font-bold text-texto text-xl sm:text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-texto text-xl sm:text-2xl">R$ {p.get("price").toFixed(2)}</span>)}
-            </div>
-            <button onClick={(e) => handleAddToCartClick(p, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-12 md:h-14 text-sm md:text-base bg-texto text-card font-bold rounded-xl md:rounded-2xl flex items-center justify-center hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 gap-2 shadow-lg">
-              {isOutOfStock ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Plus className="w-5 h-5 md:w-6 md:h-6" />}
-              {isOutOfStock ? "Esgotado" : "Adicionar à sacola"}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
-
-  const renderBestSellerCard = useCallback((p) => {
-    const isOutOfStock = p.get("stock") <= 0;
-    const promo = getActivePromo(p);
-    const isFav = favorites.includes(p.id);
-    const hasDetails = p.get("hasDetails");
-
-    return (
-      <div key={p.id} className="relative shrink-0 w-[80vw] max-w-[280px] sm:max-w-[320px] md:w-full md:max-w-none snap-center pb-6 md:pb-8 pt-2">
-        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`group w-full aspect-[3/4] relative rounded-[24px] md:rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
-          <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
-          
-          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-card/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/50 transition-colors duration-300 z-30 shadow-sm">
-            <Heart className="w-4 h-4 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
-          </button>
-
-          {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
-          
-          {hasDetails && !isOutOfStock && (
-            <div className="absolute top-4 left-4 md:top-5 md:left-5 backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-              <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
-            </div>
-          )}
-          
-          <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
-          <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-texto/30 via-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-          <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
-            <span className="text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-texto-sec drop-shadow-sm">{p.get("category")}</span>
-            <h3 className="font-serif italic text-2xl sm:text-3xl text-texto line-clamp-1 drop-shadow-sm">{p.get("name")}</h3>
-            <div className="flex items-center gap-2 mt-1 pointer-events-auto drop-shadow-sm">
-              {promo.isActive ? (<><span className="text-xs md:text-sm line-through text-texto-sec pr-1">R$ {p.get("price").toFixed(2)}</span><span className="font-bold text-texto text-xl sm:text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-texto text-xl sm:text-2xl">R$ {p.get("price").toFixed(2)}</span>)}
-            </div>
-            <button onClick={(e) => handleAddToCartClick(p, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-12 md:h-14 text-sm md:text-base bg-texto text-card font-bold rounded-xl md:rounded-2xl flex items-center justify-center hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 gap-2 shadow-lg">
-              {isOutOfStock ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Plus className="w-5 h-5 md:w-6 md:h-6" />}
-              {isOutOfStock ? "Esgotado" : "Adicionar à sacola"}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }, [favorites, getActivePromo, toggleFavorite, openProductDetails, handleAddToCartClick]);
-
+  // Card listagem/vitrine (com layout misto dependendo da tela)
   const renderProductCard = useCallback((p) => {
     const isOutOfStock = p.get("stock") <= 0;
     const variants = p.get("variants") || [];
@@ -635,34 +627,24 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     const promo = getActivePromo(p);
     
     return (
-      <div key={p.id} className="group relative flex flex-row sm:flex-col h-full bg-card sm:bg-transparent rounded-2xl sm:rounded-none p-3 sm:p-0 border border-borda sm:border-transparent shadow-sm sm:shadow-none gap-4 sm:gap-0">
+      <div key={p.id} className="group relative flex flex-row min-[400px]:flex-col h-full bg-card min-[400px]:bg-transparent rounded-2xl min-[400px]:rounded-none p-3 min-[400px]:p-0 border border-borda min-[400px]:border-transparent shadow-sm min-[400px]:shadow-none gap-4 min-[400px]:gap-0">
         
-        {/* IMAGEM (Esquerda no Celular, Topo no PC) */}
-        <div onClick={() => hasDetails && !isOutOfStock && openProductDetails(p)} className={`w-[110px] sm:w-full shrink-0 aspect-[4/5] overflow-hidden rounded-xl sm:rounded-[20px] md:rounded-[24px] bg-card sm:mb-3 md:mb-4 relative border border-transparent hover:border-borda transition-colors ${hasDetails && !isOutOfStock ? 'cursor-pointer' : ''}`}>
+        <div onClick={() => !isOutOfStock && openProductDetails(p)} className={`w-[110px] min-[400px]:w-full shrink-0 aspect-[4/5] overflow-hidden rounded-xl min-[400px]:rounded-[20px] md:rounded-[24px] bg-card min-[400px]:mb-3 md:mb-4 relative border border-transparent hover:border-borda transition-colors ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
           <img src={p.get("imageUrl")} alt={p.get("name")} loading="lazy" className={`w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
-          
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />
           
-          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 p-1.5 sm:p-2.5 bg-card/30 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
-            <Heart className="w-3 h-3 sm:w-4 sm:h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+          <button onClick={(e) => toggleFavorite(p.id, e)} className="absolute top-2 right-2 min-[400px]:top-3 min-[400px]:right-3 md:top-4 md:right-4 p-1.5 min-[400px]:p-2.5 bg-card/30 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
+            <Heart className="w-3 h-3 min-[400px]:w-4 min-[400px]:h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
           </button>
 
-          {promo.isActive && !isOutOfStock && (
-            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 bg-black/70 backdrop-blur-sm text-white px-1.5 py-1 sm:px-2.5 sm:py-1 rounded-md flex items-center gap-1 z-20 shadow-sm">
-              <Timer className="hidden sm:block w-3 h-3" />
-              <span className="text-[8px] sm:text-[10px] uppercase font-bold tracking-widest"><PromoTimer endsAt={promo.endsAt} /></span>
-            </div>
-          )}
-
-          {isOutOfStock && <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 bg-card/90 backdrop-blur-sm text-texto text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-3 md:py-1.5 rounded-full uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
+          {isOutOfStock && <div className="absolute top-2 left-2 min-[400px]:top-3 min-[400px]:left-3 md:top-4 md:left-4 bg-card/90 backdrop-blur-sm text-texto text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-3 md:py-1.5 rounded-full uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
           
           {hasDetails && !isOutOfStock && !promo.isActive && (
-            <div className="absolute top-2 left-2 sm:top-3 sm:left-3 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-              <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> <span className="hidden sm:inline">Premium</span>
+            <div className="absolute top-2 left-2 min-[400px]:top-3 min-[400px]:left-3 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-100 min-[400px]:opacity-0 min-[400px]:group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+              <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> <span className="hidden min-[400px]:inline">Premium</span>
             </div>
           )}
           
-          {/* BOTÃO HOVER (Aparece só no PC) */}
           {!isOutOfStock && (
             <div className="hidden sm:block absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4 translate-y-[120%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-auto">
               <button onClick={(e) => handleAddToCartClick(p, e)} className="w-full bg-btn text-btn-texto font-bold py-3 md:py-4 text-sm md:text-base rounded-xl shadow-lg hover:opacity-90 transition-opacity duration-300 flex items-center justify-center gap-2">
@@ -672,26 +654,24 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           )}
         </div>
         
-        {/* INFORMAÇÕES E BOTÃO MOBILE (Direita no Celular, Baixo no PC) */}
-        <div className="flex flex-col flex-1 py-1 sm:py-0 justify-between">
+        <div className="flex flex-col flex-1 py-1 min-[400px]:py-0 justify-between">
           <div>
-            <h3 className="font-medium text-sm md:text-base text-texto line-clamp-2 mb-1 sm:mb-0 leading-tight">{p.get("name")}</h3>
-            {variants.length > 0 && <span className="text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 py-0.5 rounded-md inline-block sm:hidden mb-1">{variants.length} Cores</span>}
+            <h3 className="font-medium text-sm md:text-base text-texto line-clamp-2 mb-1 min-[400px]:mb-0 leading-tight">{p.get("name")}</h3>
+            {variants.length > 0 && <span className="text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 py-0.5 rounded-md inline-block min-[400px]:hidden mb-1">{variants.length} Cores</span>}
           </div>
           
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mt-auto sm:mt-1">
+          <div className="flex flex-col min-[400px]:flex-row min-[400px]:justify-between min-[400px]:items-end mt-auto min-[400px]:mt-1">
             {promo.isActive ? (
               <div className="flex flex-col">
                 <span className="text-[10px] md:text-xs line-through text-texto-sec">R$ {p.get("price").toFixed(2)}</span>
                 <span className="text-texto font-bold text-base">R$ {promo.price.toFixed(2)}</span>
               </div>
             ) : (
-              <p className="text-texto-sec text-sm md:text-base font-bold sm:font-normal text-texto sm:text-texto-sec">R$ {p.get("price").toFixed(2)}</p>
+              <p className="text-texto-sec text-sm md:text-base font-bold min-[400px]:font-normal text-texto min-[400px]:text-texto-sec">R$ {p.get("price").toFixed(2)}</p>
             )}
-            {variants.length > 0 && <span className="hidden sm:inline-block text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 md:px-2 py-0.5 rounded-md shrink-0">{variants.length} Cores</span>}
+            {variants.length > 0 && <span className="hidden min-[400px]:inline-block text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 md:px-2 py-0.5 rounded-md shrink-0">{variants.length} Cores</span>}
           </div>
 
-          {/* BOTÃO ADICIONAR (Aparece sempre no Celular) */}
           {!isOutOfStock ? (
             <button onClick={(e) => handleAddToCartClick(p, e)} className="sm:hidden mt-3 w-full bg-texto text-card font-bold py-2.5 text-xs rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
               <Plus className="w-3.5 h-3.5" /> Adicionar
@@ -709,13 +689,15 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   return (
     <div className="min-h-screen bg-fundo transition-colors duration-500 font-sans relative flex flex-col text-texto">
       
-      <header className="bg-fundo backdrop-blur-md transition-colors duration-500 sticky top-0 z-50 border-b border-borda">
+      <header className="bg-fundo backdrop-blur-md transition-colors duration-500 sticky top-0 z-50">
         <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-16 md:h-20 flex items-center justify-between gap-3 md:gap-4">
           
-          {/*BTN DA LOGO DA PÁGINA*/}
           <div className="flex-1 flex justify-start">
             <button 
-              onClick={() => window.innerWidth < 768 ? setIsMobileMenuOpen(true) : setCurrentView("store")} 
+              onClick={() => { 
+                setDetailedProduct(null); 
+                window.innerWidth < 768 ? setIsMobileMenuOpen(true) : setCurrentView("store"); 
+              }} 
               className="text-2xl md:text-3xl font-serif italic tracking-wide text-texto hover:opacity-70 transition-opacity truncate flex items-center gap-2"
             >
               <Menu className="w-5 h-5 md:hidden" /> Flor e Sol
@@ -763,24 +745,34 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                 </span>
               </button>
 
-              {isUserMenuOpen && activeUser && (
-                <div className="absolute right-0 top-full pt-2 w-56 z-50 animate-in fade-in slide-in-from-top-2">
-                  <div className="bg-card rounded-2xl shadow-xl border border-borda overflow-hidden py-2">
-                    <div className="px-4 py-3 border-b border-borda mb-2 flex items-center gap-3">
-                      {userAvatar ? <img src={userAvatar} alt="Perfil" className="w-10 h-10 rounded-full object-cover border border-borda" /> : <div className="w-10 h-10 rounded-full bg-fundo flex items-center justify-center text-texto-sec"><User className="w-5 h-5" /></div>}
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-texto truncate">{activeUser.get("name") || "Bem-vindo!"}</p>
-                        <p className="text-xs text-texto-sec truncate">{activeUser.get("email")}</p>
+              {/* ===MENU DE PERFIL DO USUÁRIO=== */}
+              <AnimatePresence>
+                {isUserMenuOpen && activeUser && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: -15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.2, ease: "easeOut" }}
+                    className="absolute right-0 top-full pt-2 w-56 z-50"
+                  >
+                    <div className="bg-card rounded-2xl shadow-xl border border-borda overflow-hidden py-2">
+                      <div className="px-4 py-3 border-b border-borda mb-2 flex items-center gap-3">
+                        {userAvatar ? <img src={userAvatar} alt="Perfil" className="w-10 h-10 rounded-full object-cover border border-borda" /> : <div className="w-10 h-10 rounded-full bg-fundo flex items-center justify-center text-texto-sec"><User className="w-5 h-5" /></div>}
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-texto truncate">{activeUser.get("name") || "Bem-vindo!"}</p>
+                          <p className="text-xs text-texto-sec truncate">{activeUser.get("email")}</p>
+                        </div>
                       </div>
+                      <button onClick={() => { setCurrentView("profile"); setProfileTab("data"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Settings className="w-4 h-4" /> Meus Dados</button>
+                      <button onClick={() => { setCurrentView("profile"); setProfileTab("orders"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Package className="w-4 h-4" /> Meus Pedidos</button>
+                      <button onClick={() => { setCurrentView("profile"); setProfileTab("favorites"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Heart className="w-4 h-4" /> Meus Favoritos</button>
+                      <div className="h-px bg-borda my-2"></div>
+                      <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-colors"><LogOut className="w-4 h-4" /> Sair da Conta</button>
                     </div>
-                    <button onClick={() => { setCurrentView("profile"); setProfileTab("data"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Settings className="w-4 h-4" /> Meus Dados</button>
-                    <button onClick={() => { setCurrentView("profile"); setProfileTab("orders"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Package className="w-4 h-4" /> Meus Pedidos</button>
-                    <button onClick={() => { setCurrentView("profile"); setProfileTab("favorites"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Heart className="w-4 h-4" /> Meus Favoritos</button>
-                    <div className="h-px bg-borda my-2"></div>
-                    <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-colors"><LogOut className="w-4 h-4" /> Sair da Conta</button>
-                  </div>
-                </div>
-              )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
             </div>
           </div>
         </div>
@@ -850,246 +842,288 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               transition={{ duration: 0.4, ease: "easeInOut" }}
               className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 mt-6 md:mt-0 space-y-12 md:space-y-16 mb-20"
             >
-              {searchQuery ? (
-                <section>
-                  <h2 className="text-xl md:text-2xl font-medium mb-6 text-texto">Resultados para "{searchQuery}"</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-8">
-                    {searchResults.map(renderProductCard)}
-                    {searchResults.length === 0 && <p className="text-texto-sec col-span-full">Nenhum produto encontrado.</p>}
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center min-h-[60vh]">
+                  <Loader2 className="w-12 h-12 text-texto animate-spin mb-6 opacity-80" />
+                  <p className="text-texto-sec font-bold tracking-widest uppercase text-sm animate-pulse">Preparando a vitrine...</p>
+                </div>
+              ) : storeError ? (
+                <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4">
+                  <div className="w-20 h-20 bg-red-500/10 text-red-500 flex items-center justify-center rounded-full mb-6">
+                    <X className="w-10 h-10" />
                   </div>
-                </section>
+                  <h3 className="text-2xl font-serif italic text-texto mb-2">Ops! Falha na conexão.</h3>
+                  <p className="text-texto-sec mb-8 max-w-sm">Tivemos um problema para carregar a vitrine. Verifique sua internet e tente novamente.</p>
+                  <button onClick={fetchProducts} className="bg-texto text-card font-bold px-8 py-3 rounded-xl hover:opacity-90 transition-opacity flex items-center gap-2">
+                    Tentar Novamente
+                  </button>
+                </div>
               ) : (
                 <>
-                  <section className="relative w-full h-[60vh] sm:h-[70vh] md:h-[85vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm bg-fundo">
-                    <AnimatePresence initial={false}>
-                      <motion.div 
-                        key={currentBannerIndex}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 1.0, ease: "easeInOut" }}
-                        className="absolute inset-0 z-10"
-                        style={{ willChange: "opacity" }}
-                      >
-                        <img 
-                          src={bannersArray[currentBannerIndex].imageUrl} 
-                          alt={bannersArray[currentBannerIndex].title} 
-                          loading={currentBannerIndex === 0 ? "eager" : "lazy"}
-                          fetchPriority={currentBannerIndex === 0 ? "high" : "auto"}
-                          className="absolute inset-0 w-full h-full object-cover object-center" 
-                        />
-                        <div className="absolute inset-0 bg-black/30"></div>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pb-12 md:pb-20">
-                          <motion.span initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }} className="text-neutral-100/90 uppercase tracking-[0.3em] text-[10px] md:text-sm font-bold mb-2 md:mb-3 drop-shadow-sm">{bannersArray[currentBannerIndex].tag}</motion.span>
-                          <motion.h2 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.6 }} className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-serif italic text-neutral-100 mb-4 md:mb-6 drop-shadow-md break-words">{bannersArray[currentBannerIndex].title}</motion.h2>
-                          <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6, duration: 0.6 }} className="text-sm sm:text-base md:text-xl text-neutral-100/95 max-w-2xl mb-8 md:mb-10 drop-shadow-sm font-light px-4">{bannersArray[currentBannerIndex].desc}</motion.p>
-                          {bannersArray[currentBannerIndex].btn && (
-                            <motion.button initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.6 }} onClick={() => scrollToSection(bannersArray[currentBannerIndex].target)} className="px-8 py-3 md:px-10 md:py-4 bg-neutral-100 text-neutral-900 font-bold rounded-full hover:bg-neutral-300 transition-colors duration-300 shadow-2xl text-sm md:text-lg">{bannersArray[currentBannerIndex].btn}</motion.button>
-                          )}
-                        </div>
-                      </motion.div>
-                    </AnimatePresence>
-                    
-                    {bannersArray.length > 1 && (
-                      <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20">
-                        {bannersArray.map((_, idx) => (
-                          <button key={idx} onClick={() => setCurrentBannerIndex(idx)} className={`transition-colors duration-500 rounded-full ${idx === currentBannerIndex ? 'w-8 h-2 bg-white' : 'w-2 h-2 bg-white/50 hover:bg-white/80'}`} />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-
-                  {newArrivals.length > 0 && (
-                    <section id="lancamentos" className="mt-12 md:mt-16 pt-4">
-                      <div className="flex items-center gap-3 mb-6 px-1 md:px-0">
-                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-btn text-btn-texto flex items-center justify-center"><Sparkles className="w-3 h-3 md:w-4 md:h-4" /></div>
-                        <h2 className="text-xl md:text-2xl font-medium text-texto">Lançamentos</h2>
-                      </div>
-                      <div className="flex overflow-x-auto gap-4 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-8 md:pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-2 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                        {newArrivals.map(renderNewArrivalCard)}
+                  {searchQuery ? (
+                    <section>
+                      <h2 className="text-xl md:text-2xl font-medium mb-6 text-texto">Resultados para "{searchQuery}"</h2>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-8">
+                        {searchResults.map(renderProductCard)}
+                        {searchResults.length === 0 && <p className="text-texto-sec col-span-full">Nenhum produto encontrado.</p>}
                       </div>
                     </section>
-                  )}
-
-                  {promoProducts.length > 0 && (
-                    <section id="ofertas" className="mt-12 md:mt-24 relative w-full rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group bg-texto">
-                      
-                      {promoBannerImageUrl && (
-                        <>
-                          <img 
-                            src={promoBannerImageUrl} 
-                            alt={promoBannerTitle} 
-                            className="absolute inset-0 w-full h-full object-cover opacity-50 transition-transform duration-1000 group-hover:scale-105" 
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/20"></div>
-                        </>
-                      )}
-
-                      <div className="relative z-10 flex flex-col lg:flex-row items-center p-6 sm:p-10 md:p-16 gap-8 md:gap-12 h-full">
-                        
-                        <div className="w-full lg:w-1/3 flex flex-col justify-center text-left">
-                          <div className="flex items-center gap-2 mb-4">
-                            <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center backdrop-blur-md border border-amber-500/30">
-                              <Timer className="w-4 h-4" />
-                            </div>
-                            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-amber-500">Tempo Limitado</span>
-                          </div>
-                          <h2 className={`text-4xl sm:text-5xl md:text-6xl font-serif italic mb-4 drop-shadow-md leading-tight ${promoBannerImageUrl ? 'text-white' : 'text-card'}`}>{promoBannerTitle}</h2>
-                          <p className={`text-sm md:text-base max-w-sm mb-8 font-light ${promoBannerImageUrl ? 'text-white/80' : 'text-card/80'}`}>{promoBannerDesc}</p>
-                        </div>
-
-                        <div className="w-full lg:w-2/3 relative group/slider">
-                          
-                          {canScrollLeft && (
-                            <button 
-                              onClick={() => scrollPromo('left')} 
-                              className="hidden md:flex absolute left-0 lg:-left-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100"
-                            >
-                              <ArrowLeft className="w-6 h-6" />
-                            </button>
-                          )}
-
-                          <div 
-                            ref={promoScrollRef} 
-                            onScroll={handlePromoScroll} 
-                            className="flex overflow-x-auto gap-4 md:gap-6 snap-x snap-mandatory scrollbar-hide pb-4 pt-4 px-4 -mx-4 md:px-0 md:mx-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                  ) : (
+                    <>
+                      {/* =========================================================================================
+                          BANNER PRINCIPAL OTIMIZADO MOBILE (Tamanho Faixa/Ajuste Referência 1)
+                          Ajustes: h-[32vh] (mobile) e texto menor (text-2xl) para não canibalizar a tela.
+                          ========================================================================================= */}
+                      <section className="relative w-full h-[32vh] sm:h-[55vh] md:h-[70vh] lg:h-[85vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm bg-fundo mt-3 sm:mt-0">
+                        <AnimatePresence initial={false}>
+                          <motion.div 
+                            // 👇 Se tiver só 1 banner, trava a chave para ele não tentar animar nunca
+                            key={bannersArray.length > 1 ? currentBannerIndex : "static-banner"}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 1.0, ease: "easeInOut" }}
+                            className="absolute inset-0 z-10"
+                            style={{ willChange: "opacity" }}
                           >
-                            {promoProducts.map(renderPromoBannerCard)}
-                          </div>
-
-                          {canScrollRight && promoProducts.length > 1 && (
-                            <button 
-                              onClick={() => scrollPromo('right')} 
-                              className="hidden md:flex absolute right-0 lg:-right-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100 rotate-180"
-                            >
-                              <ArrowLeft className="w-6 h-6" />
-                            </button>
-                          )}
-
-                        </div>
+                            <img 
+                              src={bannersArray[currentBannerIndex].imageUrl} 
+                              alt={bannersArray[currentBannerIndex].title} 
+                              loading={currentBannerIndex === 0 ? "eager" : "lazy"}
+                              fetchPriority={currentBannerIndex === 0 ? "high" : "auto"}
+                              className="absolute inset-0 w-full h-full object-cover object-center" 
+                            />
+                            <div className="absolute inset-0 bg-black/30"></div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 sm:p-6 pb-8 md:pb-20">
+                              <motion.span initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }} className="text-neutral-100/90 uppercase tracking-[0.3em] text-[8px] sm:text-[10px] md:text-sm font-bold mb-1 md:mb-3 drop-shadow-sm">{bannersArray[currentBannerIndex].tag}</motion.span>
+                              {/* Texto menor no mobile (text-2xl vs text-7xl no desktop) */}
+                              <motion.h2 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.6 }} className="text-2xl sm:text-4xl md:text-7xl lg:text-8xl font-serif italic text-neutral-100 mb-2 md:mb-6 drop-shadow-md break-words leading-tight">{bannersArray[currentBannerIndex].title}</motion.h2>
+                              <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6, duration: 0.6 }} className="text-[10px] sm:text-base md:text-xl text-neutral-100/95 max-w-2xl mb-4 md:mb-10 drop-shadow-sm font-light px-2 sm:px-4">{bannersArray[currentBannerIndex].desc}</motion.p>
+                              {bannersArray[currentBannerIndex].btn && (
+                                <motion.button initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.6 }} onClick={() => scrollToSection(bannersArray[currentBannerIndex].target)} className="px-5 py-2 md:px-10 md:py-4 bg-neutral-100 text-neutral-900 font-bold rounded-full hover:bg-neutral-300 transition-colors duration-300 shadow-2xl text-[10px] sm:text-base md:text-lg">{bannersArray[currentBannerIndex].btn}</motion.button>
+                              )}
+                            </div>
+                          </motion.div>
+                        </AnimatePresence>
                         
-                      </div>
-                    </section>
-                  )}
-
-                  <section id="mais-desejados" className="mt-12 md:mt-16 pt-4">
-                    <div className="flex items-center gap-3 mb-6 px-1 md:px-0">
-                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-btn text-btn-texto flex items-center justify-center"><TrendingUp className="w-3 h-3 md:w-4 md:h-4" /></div>
-                      <h2 className="text-xl md:text-2xl font-medium text-texto">Mais Desejados</h2>
-                    </div>
-                    <div className="flex overflow-x-auto gap-4 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-8 md:pb-10 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                      {bestSellers.length > 0 ? bestSellers.map(renderBestSellerCard) : <p className="text-texto-sec col-span-full">Sem dados de vendas.</p>}
-                    </div>
-                  </section>
-
-                  {/* 👇 BANNER SECUNDÁRIO E SUA COLEÇÃO RELACIONADA 👇 */}
-                  {infoBannerActive && (
-                    <section className="mt-8 md:mt-24 mb-4">
-                      
-                      <div className="relative w-full h-[35vh] md:h-[50vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group">
-                        <img src={infoBannerImageUrl} alt={infoBannerTitle} loading="lazy" className="absolute inset-0 w-full h-full object-cover object-center" />
-                        <div className="absolute inset-0 bg-black/40 transition-colors hover:bg-black/50 duration-500"></div>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-10">
-                          <h2 className="text-3xl sm:text-4xl md:text-6xl font-serif italic text-white mb-3 md:mb-4 drop-shadow-md break-words">{infoBannerTitle}</h2>
-                          <p className="text-sm md:text-xl text-white/90 max-w-2xl mb-6 md:mb-8 drop-shadow-sm font-light px-4">{infoBannerDesc}</p>
-                          {infoBannerBtn && (
-                            <button className="px-6 py-2.5 md:px-8 md:py-3 bg-white text-neutral-900 font-bold rounded-full hover:bg-neutral-200 transition-colors duration-300 shadow-xl text-sm md:text-base">
-                              {infoBannerBtn}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {infoBannerProducts.length > 0 && (
-                        <div className="mt-8 md:mt-10">
-                          
-                          {/* PRIMEIRA FILEIRA: 5 Produtos (Layout Fixo e Mais Estreito) */}
-                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-                            {infoBannerProducts.slice(0, 5).map(p => (
-                               <div key={p.id} className="w-full">{renderGridCard(p, "aspect-[3/4]")}</div>
+                        {bannersArray.length > 1 && (
+                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 z-20">
+                            {bannersArray.map((_, idx) => (
+                              <button key={idx} onClick={() => setCurrentBannerIndex(idx)} className={`transition-all duration-500 rounded-full ${idx === currentBannerIndex ? 'w-5 h-1.5 sm:w-8 sm:h-2 bg-white' : 'w-1.5 h-1.5 sm:w-2 sm:h-2 bg-white/50 hover:bg-white/80'}`} />
                             ))}
                           </div>
+                        )}
+                      </section>
+
+                      {newArrivals.length > 0 && (
+                        <section id="lancamentos" className="mt-12 md:mt-16 pt-4">
+                          <div className="flex items-center gap-3 mb-6 px-1 md:px-0">
+                            <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-btn text-btn-texto flex items-center justify-center"><Sparkles className="w-3 h-3 md:w-4 md:h-4" /></div>
+                            <h2 className="text-xl md:text-2xl font-medium text-texto">Lançamentos</h2>
+                          </div>
+                          <div className="flex overflow-x-auto gap-4 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-8 md:pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-2 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                            {newArrivals.map(p => renderStandardCard(p, { tag: "Novo", wrapClass: "w-[80vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-none" }))}
+                          </div>
+                        </section>
+                      )}
+
+                      {promoProducts.length > 0 && (
+                        <section id="ofertas" className="mt-12 md:mt-24 relative w-full rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group bg-texto">
                           
-                          {/* SEGUNDA FILEIRA EM DIANTE: Flexível e com Altura Reduzida */}
-                          {infoBannerProducts.length > 5 && (
-                            <div className="flex flex-wrap gap-4 md:gap-6 mt-4 md:mt-6">
-                              {infoBannerProducts.slice(5).map(p => (
-                                <div key={p.id} className="flex-1 min-w-[150px] sm:min-w-[200px] md:min-w-[280px]">
-                                   {/* Passamos aspect-square / aspect-[4/3] para achatá-los! */}
-                                   {renderGridCard(p, "aspect-square md:aspect-[4/3]")}
-                                </div>
-                              ))}
-                            </div>
+                          {promoBannerImageUrl && (
+                            <>
+                              <img 
+                                src={promoBannerImageUrl} 
+                                alt={promoBannerTitle} 
+                                className="absolute inset-0 w-full h-full object-cover opacity-50 transition-transform duration-1000 group-hover:scale-105" 
+                              />
+                              <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/20"></div>
+                            </>
                           )}
 
+                          <div className="relative z-10 flex flex-col lg:flex-row items-center p-6 sm:p-10 md:p-16 gap-8 md:gap-12 h-full">
+                            
+                            <div className="w-full lg:w-1/3 flex flex-col justify-center text-left">
+                              <div className="flex items-center gap-2 mb-4">
+                                <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center backdrop-blur-md border border-amber-500/30">
+                                  <Timer className="w-4 h-4" />
+                                </div>
+                                <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-amber-500">Tempo Limitado</span>
+                              </div>
+                              <h2 className={`text-4xl sm:text-5xl md:text-6xl font-serif italic mb-4 drop-shadow-md leading-tight ${promoBannerImageUrl ? 'text-white' : 'text-card'}`}>{promoBannerTitle}</h2>
+                              <p className={`text-sm md:text-base max-w-sm mb-8 font-light ${promoBannerImageUrl ? 'text-white/80' : 'text-card/80'}`}>{promoBannerDesc}</p>
+                            </div>
+
+                            <div className="w-full lg:w-2/3 relative group/slider">
+                              
+                              {canScrollLeft && (
+                                <button 
+                                  onClick={() => scrollPromo('left')} 
+                                  className="hidden md:flex absolute left-0 lg:-left-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100"
+                                >
+                                  <ArrowLeft className="w-6 h-6" />
+                                </button>
+                              )}
+
+                              <div 
+                                ref={promoScrollRef} 
+                                onScroll={handlePromoScroll} 
+                                className="flex overflow-x-auto gap-4 md:gap-6 snap-x snap-mandatory scrollbar-hide pb-4 pt-4 px-4 -mx-4 md:px-0 md:mx-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                              >
+                                {promoProducts.map(renderPromoBannerCard)}
+                              </div>
+
+                              {canScrollRight && promoProducts.length > 1 && (
+                                <button 
+                                  onClick={() => scrollPromo('right')} 
+                                  className="hidden md:flex absolute right-0 lg:-right-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100 rotate-180"
+                                >
+                                  <ArrowLeft className="w-6 h-6" />
+                                </button>
+                              )}
+
+                            </div>
+                            
+                          </div>
+                        </section>
+                      )}
+
+                      <section id="mais-desejados" className="mt-12 md:mt-16 pt-4">
+                        <div className="flex items-center gap-3 mb-6 px-1 md:px-0">
+                          <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-btn text-btn-texto flex items-center justify-center"><TrendingUp className="w-3 h-3 md:w-4 md:h-4" /></div>
+                          <h2 className="text-xl md:text-2xl font-medium text-texto">Mais Desejados</h2>
                         </div>
+                        <div className="flex overflow-x-auto gap-4 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-8 md:pb-10 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                          {bestSellers.length > 0 ? bestSellers.map(p => renderStandardCard(p, { wrapClass: "w-[80vw] max-w-[280px] sm:max-w-[320px] md:w-full md:max-w-none" })) : <p className="text-texto-sec col-span-full">Sem dados de vendas.</p>}
+                        </div>
+                      </section>
+
+                      {infoBannerActive && (
+                        <section className="mt-8 md:mt-24 mb-4">
+                          
+                          <div className="relative w-full h-[35vh] md:h-[50vh] rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group">
+                            <img src={infoBannerImageUrl} alt={infoBannerTitle} loading="lazy" className="absolute inset-0 w-full h-full object-cover object-center" />
+                            <div className="absolute inset-0 bg-black/40 transition-colors hover:bg-black/50 duration-500"></div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-10">
+                              <h2 className="text-3xl sm:text-4xl md:text-6xl font-serif italic text-white mb-3 md:mb-4 drop-shadow-md break-words">{infoBannerTitle}</h2>
+                              <p className="text-sm md:text-xl text-white/90 max-w-2xl mb-6 md:mb-8 drop-shadow-sm font-light px-4">{infoBannerDesc}</p>
+                              {infoBannerBtn && (
+                                <button className="px-6 py-2.5 md:px-8 md:py-3 bg-white text-neutral-900 font-bold rounded-full hover:bg-neutral-200 transition-colors duration-300 shadow-xl text-sm md:text-base">
+                                  {infoBannerBtn}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+
+                          {infoBannerProducts.length > 0 && (
+                            <div className="mt-8 md:mt-10">
+                              
+                              {infoBannerProducts.length === 6 || infoBannerProducts.length === 2 || infoBannerProducts.length === 3 ? (
+                                <div className="flex flex-wrap gap-4 md:gap-6">
+                                  {infoBannerProducts.map(p => (
+                                    <div key={p.id} className="flex-1 min-w-[150px] sm:min-w-[200px] md:min-w-[30%]">
+                                       {renderStandardCard(p, { aspectClass: "aspect-square md:aspect-[4/3]" })}
+                                    </div>
+                                  ))}
+                                </div>
+
+                              ) : infoBannerProducts.length === 4 || infoBannerProducts.length === 5 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                                  {infoBannerProducts.map(p => (
+                                     <div key={p.id} className="w-full">
+                                       {renderStandardCard(p, { aspectClass: "aspect-[3/4]" })}
+                                     </div>
+                                  ))}
+                                </div>
+
+                              ) : (
+                                <>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                                    {infoBannerProducts.slice(0, 5).map(p => (
+                                       <div key={p.id} className="w-full">{renderStandardCard(p, { aspectClass: "aspect-[3/4]" })}</div>
+                                    ))}
+                                  </div>
+                                  
+                                  {infoBannerProducts.length > 5 && (
+                                    <div className="flex flex-wrap gap-4 md:gap-6 mt-4 md:mt-6">
+                                      {infoBannerProducts.slice(5).map(p => (
+                                        <div key={p.id} className="flex-1 min-w-[150px] sm:min-w-[200px] md:min-w-[280px]">
+                                           {renderStandardCard(p, { aspectClass: "aspect-square md:aspect-[4/3]" })}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </section>
                       )}
-                    </section>
+
+                      <section id="catalogo" className="border-t border-borda pt-8 md:pt-12 mt-8 md:mt-12 relative">
+                        {categoriesList.length > 1 && (
+                          <div className="flex items-center gap-2.5 sm:gap-4 overflow-x-auto pb-6 md:pb-8 scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:justify-center">
+                            {categoriesList.map(cat => (
+                              <button 
+                                key={cat} 
+                                onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
+                                className={`px-4 py-2 sm:px-6 sm:py-2.5 rounded-full text-[11px] sm:text-sm font-bold transition-colors duration-300 whitespace-nowrap border shrink-0 ${selectedCategory === cat ? "bg-texto text-card shadow-md border-transparent" : "bg-card border-borda text-texto-sec hover:text-texto hover:bg-texto/5"}`}
+                              >
+                                {cat}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        
+                        <div className="relative w-full">
+                          {currentPage > 1 && (
+                            <button 
+                              onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} 
+                              className="hidden md:flex absolute -left-12 lg:-left-16 top-1/2 -translate-y-1/2 w-10 h-10 items-center justify-center rounded-full bg-texto text-card hover:opacity-70 transition-opacity z-20 shadow-sm"
+                            >
+                              <ArrowLeft className="w-5 h-5" />
+                            </button>
+                          )}
+
+                          <AnimatePresence mode="wait">
+                            <motion.div 
+                              key={`${selectedCategory}-${currentPage}`}
+                              initial={{ opacity: 0, x: 20 }}
+                              animate={{ opacity: 1, x: 0 }}
+                              exit={{ opacity: 0, x: -20 }}
+                              transition={{ duration: 0.4, ease: "easeOut" }}
+                              className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 md:gap-8"                        >
+                              {currentCatalogPageItems.map(renderProductCard)}
+                              {currentCatalogPageItems.length === 0 && <p className="text-texto-sec col-span-full text-center py-10">Nenhum produto nesta categoria.</p>}
+                            </motion.div>
+                          </AnimatePresence>
+
+                          {currentPage < totalCatalogPages && (
+                            <button 
+                              onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} 
+                              className="hidden md:flex absolute -right-12 lg:-right-16 top-1/2 -translate-y-1/2 w-10 h-10 items-center justify-center rounded-full bg-texto text-card hover:opacity-70 transition-opacity z-20 shadow-sm rotate-180"
+                            >
+                              <ArrowLeft className="w-5 h-5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {totalCatalogPages > 1 && (
+                          <div className="md:hidden flex justify-center items-center gap-4 mt-10">
+                            <button onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} disabled={currentPage === 1} className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm">
+                              <ArrowLeft className="w-5 h-5" />
+                            </button>
+                            <span className="text-sm font-bold text-texto-sec tracking-wider">
+                              <span className="text-texto">{currentPage}</span> / {totalCatalogPages}
+                            </span>
+                            <button onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} disabled={currentPage === totalCatalogPages} className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm rotate-180">
+                              <ArrowLeft className="w-5 h-5" />
+                            </button>
+                          </div>
+                        )}
+                      </section>
+                    </>
                   )}
-                  {/* 👆 FIM DO BANNER SECUNDÁRIO 👆 */}
-
-                  <section id="catalogo" className="border-t border-borda pt-8 md:pt-12 mt-8 md:mt-12 relative">
-                    {categoriesList.length > 1 && (
-                      <div className="flex items-center gap-3 md:gap-4 overflow-x-auto pb-6 md:pb-8 scrollbar-hide -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:justify-center">
-                        {categoriesList.map(cat => (
-                          <button 
-                            key={cat} 
-                            onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
-                            className={`px-5 py-2 md:px-6 md:py-2.5 rounded-full text-xs md:text-sm font-bold transition-colors duration-300 whitespace-nowrap border shrink-0 ${selectedCategory === cat ? "bg-texto text-card shadow-md border-transparent" : "bg-card border-borda text-texto-sec hover:text-texto hover:bg-texto/5"}`}
-                          >
-                            {cat}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                    
-                    <div className="relative w-full">
-                      {currentPage > 1 && (
-                        <button 
-                          onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} 
-                          className="hidden md:flex absolute -left-12 lg:-left-16 top-1/2 -translate-y-1/2 w-10 h-10 items-center justify-center rounded-full bg-texto text-card hover:opacity-70 transition-opacity z-20 shadow-sm"
-                        >
-                          <ArrowLeft className="w-5 h-5" />
-                        </button>
-                      )}
-
-                      <AnimatePresence mode="wait">
-                        <motion.div 
-                          key={`${selectedCategory}-${currentPage}`}
-                          initial={{ opacity: 0, x: 20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -20 }}
-                          transition={{ duration: 0.4, ease: "easeOut" }}
-                          className="flex flex-col sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 md:gap-8"                        >
-                          {currentCatalogPageItems.map(renderProductCard)}
-                          {currentCatalogPageItems.length === 0 && <p className="text-texto-sec col-span-full text-center py-10">Nenhum produto nesta categoria.</p>}
-                        </motion.div>
-                      </AnimatePresence>
-
-                      {currentPage < totalCatalogPages && (
-                        <button 
-                          onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} 
-                          className="hidden md:flex absolute -right-12 lg:-right-16 top-1/2 -translate-y-1/2 w-10 h-10 items-center justify-center rounded-full bg-texto text-card hover:opacity-70 transition-opacity z-20 shadow-sm rotate-180"
-                        >
-                          <ArrowLeft className="w-5 h-5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {totalCatalogPages > 1 && (
-                      <div className="md:hidden flex justify-center items-center gap-4 mt-10">
-                        <button onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} disabled={currentPage === 1} className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm">
-                          <ArrowLeft className="w-5 h-5" />
-                        </button>
-                        <span className="text-sm font-bold text-texto-sec tracking-wider">
-                          <span className="text-texto">{currentPage}</span> / {totalCatalogPages}
-                        </span>
-                        <button onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} disabled={currentPage === totalCatalogPages} className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm rotate-180">
-                          <ArrowLeft className="w-5 h-5" />
-                        </button>
-                      </div>
-                    )}
-                  </section>
                 </>
               )}
             </motion.main>
@@ -1144,7 +1178,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                            <label className="block text-[10px] md:text-xs font-bold text-texto-sec uppercase mb-1">WhatsApp</label>
                            <input type="tel" value={userPhone} onChange={(e) => setUserPhone(e.target.value)} placeholder="(00) 00000-0000" className="w-full px-4 py-3 bg-card border border-borda text-sm text-texto rounded-xl focus:ring-2 focus:ring-texto focus:outline-none" />
                          </div>
-                         <button type="submit" disabled={isSavingProfile} className="w-full bg-btn text-btn-texto font-bold py-3.5 md:py-4 rounded-xl text-sm md:text-base hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 flex justify-center items-center gap-2 shadow-md">
+                         <button type="submit" disabled={isSavingProfile} className="w-full h-12 md:h-14 bg-btn text-btn-texto font-bold rounded-xl text-sm md:text-base hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 flex justify-center items-center gap-2 shadow-md">
                            {isSavingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : "Salvar Alterações"}
                          </button>
                        </form>
@@ -1246,11 +1280,21 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                         </div>
                         
                         <div className="flex items-center gap-2 bg-fundo p-2 rounded-xl md:rounded-2xl w-full mb-6 md:mb-8 border border-borda min-w-0">
-                          <input type="text" readOnly value={pixData.qrCode} className="bg-transparent flex-1 text-[10px] md:text-xs text-texto-sec outline-none pl-2 md:pl-3 truncate font-medium min-w-0" />
-                          <button onClick={handleCopyPix} className="bg-btn text-btn-texto px-4 py-3 md:px-6 md:py-4 text-[10px] md:text-xs font-bold rounded-lg md:rounded-xl hover:opacity-90 transition-opacity duration-300 shadow-md shrink-0">Copiar</button>
+                          <input type="text" readOnly value={pixData?.qrCode || ""} className="bg-transparent flex-1 text-[10px] md:text-xs text-texto-sec outline-none pl-2 md:pl-3 truncate font-medium min-w-0" />
+                          <button 
+                            onClick={handleCopyPix} 
+                            disabled={isCopied}
+                            className={`px-4 py-3 md:px-6 md:py-4 text-[10px] md:text-xs font-bold rounded-lg md:rounded-xl transition-all duration-300 shadow-md shrink-0 flex items-center justify-center gap-1.5 ${isCopied ? 'bg-green-500 text-white' : 'bg-btn text-btn-texto hover:opacity-90'}`}
+                          >
+                            {isCopied ? (
+                              <><CheckCircle className="w-3 h-3 md:w-4 md:h-4" /> Copiado!</>
+                            ) : (
+                              "Copiar"
+                            )}
+                          </button>
                         </div>
                         
-                        <button onClick={handleWhatsAppRedirect} className="w-full py-3.5 md:py-4 bg-btn text-btn-texto font-bold rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-xl flex items-center justify-center gap-2 md:gap-3 text-sm md:text-lg"><MessageCircle className="w-5 h-5 md:w-6 md:h-6" /> Já paguei! Enviar comprovante</button>
+                        <button onClick={handleWhatsAppRedirect} className="w-full h-14 md:h-16 bg-btn text-btn-texto font-bold rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-xl flex items-center justify-center gap-2 md:gap-3 text-sm md:text-lg"><MessageCircle className="w-5 h-5 md:w-6 md:h-6" /> Já paguei!</button>
                         <button onClick={closeCart} className="mt-6 md:mt-8 text-xs md:text-sm font-bold text-texto-sec hover:text-texto transition-colors">Voltar para a Loja</button>
                       </div>
                     )}
@@ -1260,7 +1304,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                         <div className="w-20 h-20 md:w-24 md:h-24 bg-green-500/20 text-green-500 rounded-full flex items-center justify-center mb-6 md:mb-8 shadow-inner"><CheckCircle className="w-10 h-10 md:w-12 md:h-12" /></div>
                         <h3 className="text-2xl md:text-3xl font-bold text-texto mb-2">Pedido Confirmado!</h3>
                         <p className="text-texto-sec mb-8 md:mb-10 text-sm md:text-lg px-4">Chame nossa equipe no WhatsApp para combinarmos a entrega.</p>
-                        <button onClick={handleWhatsAppRedirect} className="w-full py-3.5 md:py-4 bg-btn text-btn-texto font-bold rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-xl flex items-center justify-center gap-2 md:gap-3 text-sm md:text-lg"><MessageCircle className="w-5 h-5 md:w-6 md:h-6" /> Combinar Entrega</button>
+                        <button onClick={handleWhatsAppRedirect} className="w-full h-14 md:h-16 bg-btn text-btn-texto font-bold rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-xl flex items-center justify-center gap-2 md:gap-3 text-sm md:text-lg"><MessageCircle className="w-5 h-5 md:w-6 md:h-6" /> Combinar Entrega</button>
                         <button onClick={closeCart} className="mt-6 md:mt-8 text-xs md:text-sm font-bold text-texto-sec hover:text-texto transition-colors">Voltar para a Loja</button>
                       </div>
                     )}
@@ -1274,13 +1318,13 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                     transition={{ duration: 0.4 }}
                     className="flex flex-col lg:flex-row gap-6 md:gap-8 items-start"
                   >
-                    <div className="flex-1 w-full bg-card rounded-2xl md:rounded-3xl p-5 md:p-10 shadow-sm border border-borda transition-colors duration-500">
+                    <div className="flex-1 w-full bg-card rounded-2xl md:rounded-3xl p-5 md:p-10 shadow-sm border border-borda transition-colors duration-500 overflow-hidden">
                       
                       <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8 pb-4 md:pb-6 border-b border-borda">
                         <button onClick={closeCart} className="p-2 md:p-3 hover:bg-fundo rounded-full transition-colors text-texto-sec hover:text-texto">
                           <ArrowLeft className="w-5 h-5 md:w-6 md:h-6" />
                         </button>
-                        <h2 className="text-2xl md:text-3xl font-serif italic text-texto">
+                        <h2 className="text-2xl md:text-3xl font-serif italic text-texto truncate">
                           {checkoutStep === "cart" ? "Sua Sacola" : "Pagamento"}
                         </h2>
                       </div>
@@ -1297,34 +1341,32 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                               cart.map((item) => {
                                 const promo = getActivePromo(item.product);
                                 return (
-                                  <div key={`${item.product.id}-${item.variant}`} className="flex flex-row gap-4 md:gap-6 p-3 md:p-4 rounded-xl md:rounded-2xl border border-borda transition-colors hover:bg-fundo">
-                                    <img src={item.product.get("imageUrl")} alt={item.product.get("name")} className="w-24 h-32 sm:w-28 sm:h-32 md:w-32 object-cover rounded-lg md:rounded-xl border border-borda shrink-0" />
-                                    <div className="flex-1 flex flex-col justify-between min-w-0">
+                                  <div key={`${item.product.id}-${item.variant}`} className="flex flex-row gap-3.5 md:gap-6 p-3 md:p-4 rounded-xl md:rounded-2xl border border-borda transition-colors hover:bg-fundo relative">
+                                    <img src={item.product.get("imageUrl")} alt={item.product.get("name")} className="w-20 h-28 sm:w-28 sm:h-32 md:w-32 object-cover rounded-lg md:rounded-xl border border-borda shrink-0" />
+                                    <div className="flex-1 flex flex-col justify-between min-w-0 pr-6 sm:pr-0">
                                       <div>
-                                        <div className="flex justify-between items-start">
-                                          <h3 className="font-bold text-texto text-sm md:text-lg pr-2 truncate">
-                                            {item.product.get("name")} 
-                                            {item.variant && <span className="block text-xs md:text-sm text-texto-sec mt-0.5 md:mt-1 truncate">Modelo: {item.variant}</span>}
-                                          </h3>
-                                          <button onClick={() => removeFromCart(item.product.id, item.variant)} className="p-1.5 md:p-2 text-texto-sec hover:text-red-500 transition-colors rounded-full hover:bg-red-500/10 shrink-0"><Trash2 className="w-4 h-4 md:w-5 md:h-5" /></button>
-                                        </div>
+                                        <h3 className="font-bold text-texto text-sm md:text-lg truncate leading-snug">
+                                          {item.product.get("name")} 
+                                        </h3>
+                                        {item.variant && <span className="block text-[11px] md:text-sm text-texto-sec mt-0.5 md:mt-1 truncate">Modelo: {item.variant}</span>}
                                         {promo.isActive ? (
-                                          <div className="flex items-center gap-2 mt-1 md:mt-2 flex-wrap">
-                                            <p className="text-texto-sec text-xs md:text-sm line-through">R$ {item.product.get("price").toFixed(2)}</p>
-                                            <p className="text-texto font-bold text-base md:text-lg">R$ {promo.price.toFixed(2)}</p>
+                                          <div className="flex items-center gap-1.5 md:gap-2 mt-1 md:mt-2 flex-wrap">
+                                            <p className="text-texto font-bold text-sm md:text-lg">R$ {promo.price.toFixed(2)}</p>
+                                            <p className="text-texto-sec text-[11px] md:text-sm line-through">R$ {item.product.get("price").toFixed(2)}</p>
                                           </div>
                                         ) : (
-                                          <p className="text-texto font-bold text-base md:text-lg mt-1 md:mt-2">R$ {item.product.get("price").toFixed(2)}</p>
+                                          <p className="text-texto font-bold text-sm md:text-lg mt-1 md:mt-2">R$ {item.product.get("price").toFixed(2)}</p>
                                         )}
                                       </div>
-                                      <div className="flex items-center gap-4 mt-3 md:mt-4">
-                                        <div className="flex items-center gap-2 md:gap-3 bg-fundo border border-borda w-fit rounded-lg md:rounded-xl px-1.5 md:px-2 py-1">
-                                          <button onClick={() => updateQuantity(item.product.id, item.variant, -1)} className="p-1 md:p-2 hover:text-texto text-texto-sec transition-colors bg-card rounded md:rounded-lg shadow-sm border border-transparent"><Minus className="w-3 h-3 md:w-4 md:h-4" /></button>
-                                          <span className="w-5 md:w-6 text-center font-bold text-xs md:text-sm text-texto">{item.quantity}</span>
-                                          <button onClick={() => updateQuantity(item.product.id, item.variant, 1)} className="p-1 md:p-2 hover:text-texto text-texto-sec transition-colors bg-card rounded md:rounded-lg shadow-sm border border-transparent"><Plus className="w-3 h-3 md:w-4 md:h-4" /></button>
+                                      <div className="flex items-center gap-4 mt-2 sm:mt-4">
+                                        <div className="flex items-center gap-1.5 md:gap-3 bg-fundo border border-borda w-fit rounded-lg md:rounded-xl px-1 md:px-2 py-0.5 sm:py-1">
+                                          <button onClick={() => updateQuantity(item.product.id, item.variant, -1)} className="p-1 sm:p-2 hover:text-texto text-texto-sec transition-colors rounded-md sm:rounded-lg"><Minus className="w-3 h-3 md:w-4 md:h-4" /></button>
+                                          <span className="w-4 sm:w-6 text-center font-bold text-xs md:text-sm text-texto">{item.quantity}</span>
+                                          <button onClick={() => updateQuantity(item.product.id, item.variant, 1)} className="p-1 sm:p-2 hover:text-texto text-texto-sec transition-colors rounded-md sm:rounded-lg"><Plus className="w-3 h-3 md:w-4 md:h-4" /></button>
                                         </div>
                                       </div>
                                     </div>
+                                    <button onClick={() => removeFromCart(item.product.id, item.variant)} className="absolute top-3 right-3 p-1.5 sm:static sm:p-2 text-texto-sec hover:text-red-500 transition-colors rounded-full hover:bg-red-500/10 shrink-0"><Trash2 className="w-3.5 h-3.5 md:w-5 md:h-5" /></button>
                                   </div>
                                 );
                               })
@@ -1334,25 +1376,25 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
                         {checkoutStep === "payment" && (
                           <motion.div key="payment-list" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.3 }} className="space-y-4 md:space-y-6">
-                            <p className="text-base md:text-lg text-texto-sec font-bold mb-2 md:mb-4">Escolha a forma de pagamento:</p>
+                            <p className="text-sm sm:text-lg text-texto-sec font-bold mb-2 md:mb-4">Escolha a forma de pagamento:</p>
                             
                             <button onClick={() => setPaymentMethod("pix")} className={`w-full p-4 md:p-6 rounded-xl md:rounded-2xl border-2 text-left flex items-center gap-4 md:gap-6 transition-colors duration-300 ${paymentMethod === "pix" ? "border-texto bg-fundo shadow-md" : "border-borda bg-card hover:border-texto-sec hover:bg-fundo/50"}`}>
-                              <div className={`p-3 md:p-4 rounded-full shrink-0 transition-colors duration-300 ${paymentMethod === "pix" ? "bg-btn text-btn-texto" : "bg-fundo text-texto-sec"}`}>
-                                <QrCode className="w-6 h-6 md:w-8 md:h-8" />
+                              <div className={`p-2.5 md:p-4 rounded-full shrink-0 transition-colors duration-300 ${paymentMethod === "pix" ? "bg-btn text-btn-texto" : "bg-fundo text-texto-sec"}`}>
+                                <QrCode className="w-5 h-5 md:w-8 md:h-8" />
                               </div>
-                              <div>
-                                <h4 className={`text-base md:text-xl font-bold transition-colors duration-300 ${paymentMethod === "pix" ? "text-texto" : "text-texto-sec"}`}>PIX (Na hora)</h4>
-                                <p className="text-[10px] md:text-sm text-texto-sec mt-0.5 md:mt-1">Gere o código Copia e Cola na próxima tela.</p>
+                              <div className="min-w-0">
+                                <h4 className={`text-sm md:text-xl font-bold transition-colors duration-300 ${paymentMethod === "pix" ? "text-texto" : "text-texto-sec"}`}>PIX (Aprovação na hora)</h4>
+                                <p className="text-[10px] md:text-sm text-texto-sec mt-0.5 md:mt-1 truncate">Código Copia e Cola na próxima tela.</p>
                               </div>
                             </button>
                             
                             <button onClick={() => setPaymentMethod("entrega")} className={`w-full p-4 md:p-6 rounded-xl md:rounded-2xl border-2 text-left flex items-center gap-4 md:gap-6 transition-colors duration-300 ${paymentMethod === "entrega" ? "border-texto bg-fundo shadow-md" : "border-borda bg-card hover:border-texto-sec hover:bg-fundo/50"}`}>
-                              <div className={`p-3 md:p-4 rounded-full shrink-0 transition-colors duration-300 ${paymentMethod === "entrega" ? "bg-btn text-btn-texto" : "bg-fundo text-texto-sec"}`}>
-                                <Truck className="w-6 h-6 md:w-8 md:h-8" />
+                              <div className={`p-2.5 md:p-4 rounded-full shrink-0 transition-colors duration-300 ${paymentMethod === "entrega" ? "bg-btn text-btn-texto" : "bg-fundo text-texto-sec"}`}>
+                                <Truck className="w-5 h-5 md:w-8 md:h-8" />
                               </div>
-                              <div>
-                                <h4 className={`text-base md:text-xl font-bold transition-colors duration-300 ${paymentMethod === "entrega" ? "text-texto" : "text-texto-sec"}`}>Pagar na Entrega</h4>
-                                <p className="text-[10px] md:text-sm text-texto-sec mt-0.5 md:mt-1">Pague ao motoboy em dinheiro ou cartão.</p>
+                              <div className="min-w-0">
+                                <h4 className={`text-sm md:text-xl font-bold transition-colors duration-300 ${paymentMethod === "entrega" ? "text-texto" : "text-texto-sec"}`}>Pagar na Entrega</h4>
+                                <p className="text-[10px] md:text-sm text-texto-sec mt-0.5 md:mt-1 truncate">Dinheiro ou Cartão ao motoboy.</p>
                               </div>
                             </button>
                           </motion.div>
@@ -1360,17 +1402,17 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                       </AnimatePresence>
                     </div>
 
-                    <div className="w-full lg:w-[400px] shrink-0 bg-card rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-sm border border-borda sticky top-24 md:top-28 transition-colors duration-500">
-                      <h3 className="text-lg md:text-xl font-bold text-texto mb-6 md:mb-8">Resumo do Pedido</h3>
+                    <div className="w-full lg:w-[400px] shrink-0 bg-card rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-sm border border-borda sticky top-20 md:top-28 transition-colors duration-500">
+                      <h3 className="text-lg md:text-xl font-bold text-texto mb-5 md:mb-8">Resumo do Pedido</h3>
                       
-                      <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
-                        <div className="flex justify-between text-sm md:text-base text-texto-sec">
+                      <div className="space-y-3 md:space-y-4 mb-5 md:mb-8">
+                        <div className="flex justify-between text-[13px] md:text-base text-texto-sec">
                           <span>Subtotal ({cartItemsCount} itens)</span>
                           <span>R$ {cartTotal.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-sm md:text-base text-texto-sec">
-                          <span>Frete</span>
-                          <span className="text-texto font-bold">A calcular</span>
+                        <div className="flex justify-between text-[13px] md:text-base text-texto-sec">
+                          <span>Entrega</span>
+                          <span className="text-texto font-bold">A combinar</span>
                         </div>
                       </div>
                       
@@ -1385,19 +1427,23 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                             <button 
                               onClick={() => activeUser ? setCheckoutStep("payment") : onRequireLogin()} 
                               disabled={cart.length === 0} 
-                              className="w-full bg-btn text-btn-texto font-bold py-4 md:py-5 rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-lg disabled:opacity-50 flex justify-center items-center text-sm md:text-lg"
+                              className="w-full h-14 md:h-16 bg-btn text-btn-texto font-bold rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-lg disabled:opacity-50 flex justify-center items-center text-sm md:text-lg"
                             >
-                              Ir para Pagamento
+                              Escolher Pagamento
                             </button>
                           </motion.div>
                         )}
 
                         {checkoutStep === "payment" && (
                           <motion.div key="btn-payment" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-3 md:gap-4">
-                            <button onClick={submitFinalCheckout} className="w-full bg-btn text-btn-texto font-bold py-4 md:py-5 rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-lg flex justify-center items-center text-sm md:text-lg gap-2">
-                              <CheckCircle className="w-4 h-4 md:w-5 md:h-5" /> Finalizar Pedido
+                            <button onClick={submitFinalCheckout} disabled={isProcessingOrder} className="w-full h-14 md:h-16 bg-btn text-btn-texto font-bold rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-lg disabled:opacity-50 flex justify-center items-center text-sm md:text-lg gap-2">
+                              {isProcessingOrder ? (
+                                <><Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> Finalizando...</>
+                              ) : (
+                                <><CheckCircle className="w-4 h-4 md:w-5 md:h-5" /> Confirmar Pedido</>
+                              )}
                             </button>
-                            <button onClick={() => setCheckoutStep("cart")} className="w-full py-3 md:py-4 text-texto-sec font-bold hover:text-texto transition-colors text-xs md:text-sm">
+                            <button onClick={() => setCheckoutStep("cart")} className="w-full text-texto-sec font-bold hover:text-texto transition-colors text-xs md:text-sm py-1">
                               Voltar para sacola
                             </button>
                           </motion.div>
@@ -1423,9 +1469,9 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               className="bg-card w-full max-w-sm rounded-3xl shadow-2xl p-6 border border-borda relative"
               onClick={(e) => e.stopPropagation()}
             >
-              <button onClick={() => setQuickAdd({ isOpen: false, product: null, selectedVariant: "" })} className="absolute top-4 right-4 p-2 bg-fundo hover:bg-borda rounded-full text-texto-sec hover:text-texto transition-colors"><X className="w-5 h-5" /></button>
+              <button onClick={() => setQuickAdd({ isOpen: false, product: null, selectedVariant: "" })} className="absolute top-4 right-4 p-2.5 bg-fundo hover:bg-borda rounded-full text-texto-sec hover:text-texto transition-colors"><X className="w-4 h-4" /></button>
               
-              <div className="flex items-center gap-4 mb-6 pr-8">
+              <div className="flex items-center gap-4 mb-6 pr-8 mt-1">
                 <img src={quickAdd.product.get("imageUrl")} alt={quickAdd.product.get("name")} className="w-16 h-16 object-cover rounded-xl border border-borda shrink-0" />
                 <div>
                   <h3 className="font-bold text-texto line-clamp-1">{quickAdd.product.get("name")}</h3>
@@ -1435,13 +1481,13 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                 </div>
               </div>
 
-              <p className="text-xs font-bold text-texto uppercase tracking-wider mb-3">Escolha a Opção:</p>
+              <p className="text-[10px] font-bold text-texto uppercase tracking-wider mb-2.5">Escolha o Modelo:</p>
               <div className="flex flex-wrap gap-2 mb-6">
                 {(quickAdd.product.get("variants") || []).map(v => (
                   <button 
                     key={v} 
                     onClick={() => setQuickAdd({ ...quickAdd, selectedVariant: v })} 
-                    className={`px-4 py-2.5 rounded-xl text-sm font-bold transition-colors border ${quickAdd.selectedVariant === v ? 'border-texto bg-texto text-card shadow-md' : 'border-borda bg-fundo text-texto-sec hover:border-texto hover:text-texto'}`}
+                    className={`px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-colors border ${quickAdd.selectedVariant === v ? 'border-texto bg-texto text-card shadow-md' : 'border-borda bg-fundo text-texto-sec hover:border-texto hover:text-texto'}`}
                   >
                     {v}
                   </button>
@@ -1450,109 +1496,160 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
               <button 
                 onClick={() => processAddToCart(quickAdd.product, quickAdd.selectedVariant)} 
-                className="w-full py-4 bg-btn text-btn-texto font-bold rounded-xl hover:opacity-90 transition-opacity duration-300 shadow-lg flex items-center justify-center gap-2"
+                className="w-full h-12 bg-btn text-btn-texto font-bold rounded-xl hover:opacity-90 transition-opacity duration-300 shadow-lg flex items-center justify-center gap-2 text-sm"
               >
-                <Plus className="w-5 h-5" /> Adicionar à Sacola
+                <Plus className="w-4 h-4" /> Adicionar à Sacola
               </button>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
 
+      {/* ==============================================================================
+          PAINEL DE PRODUTO FULL SCREEN (ESTÁVEL 50/50 - CORREÇÃO DE BUGS)
+          ============================================================================== */}
       <AnimatePresence>
         {detailedProduct && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-0 sm:p-4 md:p-6 lg:p-10 bg-black/30 backdrop-blur-md" onClick={() => setDetailedProduct(null)}>
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 30 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 30 }} transition={{ type: "spring", bounce: 0, duration: 0.6 }} className="bg-card w-full h-full max-w-[1400px] sm:rounded-[32px] md:rounded-[20px] overflow-hidden shadow-2xl flex flex-col md:flex-row relative transition-colors duration-500" onClick={(e) => e.stopPropagation()}>
-              <button onClick={() => setDetailedProduct(null)} className="hidden md:flex absolute top-6 right-6 lg:top-8 lg:right-8 z-20 p-3 lg:p-4 bg-fundo hover:bg-borda rounded-full transition-colors text-texto shadow-xl"><X className="w-5 h-5 lg:w-6 lg:h-6" /></button>
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.4, ease: "easeInOut" }}
+            // 👇 1. CORREÇÃO: Ocupa a tela inteira abaixo do header, sem vazar
+            className="fixed inset-0 top-[71px] bottom-0 z-40 bg-fundo overflow-hidden border-t border-borda flex flex-col md:block"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 h-full w-full">
               
-              <div className="w-full md:w-[50%] lg:w-[55%] h-[40vh] md:h-full bg-black relative shrink-0">
+              {/* === LADO ESQUERDO: MÍDIA (50% - CORRIGIDO) === */}
+              {/* 👇 Removemos todo o padding (p-3, p-6) para a imagem encostar nas bordas */}
+              <div className="relative w-full h-[45vh] md:h-full overflow-hidden shrink-0 p-5 pt-2">
+                
+                {/* Botão Voltar Flutuante */}
+                <button 
+                  onClick={() => setDetailedProduct(null)} 
+                  className="absolute top-4 left-4 md:top-6 md:left-6 p-2.5 bg-card/80 backdrop-blur-md border border-borda rounded-full text-texto hover:bg-card transition-all shadow-sm z-30 group"
+                  title="Voltar para a loja"
+                >
+                  <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-1" />
+                </button>
+
                 {(() => {
                   const mediaUrl = detailedProduct.get("detailsMediaUrl") || detailedProduct.get("imageUrl");
                   const isVideo = /\.(mp4|webm|ogg|mov)$/i.test(mediaUrl);
-                  return isVideo ? (<video src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />) : (<img src={mediaUrl} alt={detailedProduct.get("name")} className="w-full h-full object-cover" />);
+                  return isVideo ? (
+                    // 👇 Voltamos para object-cover e removemos o rounded para preencher 100%
+                    <video src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
+                  ) : (
+                    <img src={mediaUrl} alt={detailedProduct.get("name")} className="w-full h-full object-cover rounded-2xl" />
+                  );
                 })()}
-                <button onClick={() => setDetailedProduct(null)} className="absolute top-4 right-4 p-2.5 bg-card/50 backdrop-blur-md hover:bg-card rounded-full transition-colors md:hidden z-10 shadow-lg text-texto"><X className="w-5 h-5" /></button>
-              </div>
-              
-              <div className="w-full md:w-[50%] lg:w-[45%] p-6 sm:p-8 md:p-10 lg:p-12 flex flex-col flex-1 overflow-y-auto relative [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-black [&::-webkit-scrollbar-thumb]:rounded-full">
-                <div className="mb-4 md:mb-6"><span className="text-[10px] md:text-xs font-bold tracking-widest text-texto-sec uppercase">{detailedProduct.get("category") || "Premium"}</span></div>
                 
-                <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-serif italic text-texto mb-4 md:mb-6 leading-tight break-words pr-8 md:pr-12">{detailedProduct.get("name")}</h2>
-                                
-                <div className="mb-6 md:mb-8">
-                  {getActivePromo(detailedProduct).isActive ? (
-                    <div className="flex items-center gap-2 md:gap-3 flex-wrap">
-                      <span className="text-texto-sec text-base md:text-xl line-through">R$ {detailedProduct.get("price").toFixed(2)}</span>
-                      <span className="text-3xl md:text-4xl font-bold text-texto">R$ {getActivePromo(detailedProduct).price.toFixed(2)}</span>
-                    </div>
-                  ) : (<span className="text-3xl md:text-4xl font-bold text-texto">R$ {detailedProduct.get("price").toFixed(2)}</span>)}
-                </div>
-                
-                <p className="text-texto-sec leading-relaxed mb-8 md:mb-10 whitespace-pre-line text-sm sm:text-base md:text-lg">{detailedProduct.get("description")}</p>
-                
-                {(detailedProduct.get("variants") || []).length > 0 && (
-                  <div className="mb-8 md:mb-10">
-                    <p className="text-[10px] md:text-xs font-bold text-texto uppercase tracking-wider mb-3 md:mb-4">Escolha a Opção</p>
-                    <div className="flex flex-wrap gap-2 md:gap-3">
-                      {(detailedProduct.get("variants") || []).map(v => (
-                        <button key={v} onClick={() => setDetailedVariant(v)} className={`px-4 py-2 md:px-6 md:py-3 rounded-full text-xs md:text-sm font-bold transition-colors border ${detailedVariant === v ? 'border-texto bg-texto text-card shadow-md' : 'border-borda bg-card text-texto-sec hover:border-texto'}`}>{v}</button>
-                      ))}
-                    </div>
+                {detailedProduct.get("isInfoBannerProduct") && (
+                  <div className="absolute top-6 right-6 md:top-8 md:right-8 bg-card/80 backdrop-blur-md text-texto px-3 py-1.5 rounded-full flex items-center gap-1.5 z-10 shadow-sm">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span className="text-[10px] uppercase font-bold tracking-widest">Destaque</span>
                   </div>
                 )}
+              </div>
 
-                <div className="mb-8 md:mb-10 border-t border-borda pt-6 md:pt-8">
-                  <h3 className="text-sm md:text-base font-bold text-texto uppercase tracking-wider mb-4 md:mb-6">Avaliações Recentes</h3>
+              {/* === LADO DIREITO: INFORMAÇÕES (50%) === */}
+              {/* 👇 CORREÇÃO: p-6 sm:p-10 lg:p-16 para espaçamento elegante, scrollbar-hide */}
+              <div className="h-[55vh] md:h-full overflow-y-auto p-6 sm:p-10 lg:p-16 flex flex-col relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                <div>
+                  <div className="mb-2 md:mb-3"><span className="text-[10px] md:text-xs font-bold tracking-widest text-texto-sec uppercase">{(detailedProduct.get("categories") || [detailedProduct.get("category")]).filter(Boolean).join(" , ") || "Premium"}</span></div>
                   
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                    {productReviews.length === 0 ? (
-                      <p className="text-sm text-texto-sec italic col-span-full">Ainda não há avaliações para este produto. Seja o primeiro!</p>
+                  {/* 👇 4. CORREÇÃO: Título e Preço voltaram a ficar empilhados (layout original) 👇 */}
+                  <h1 className="text-3xl md:text-4xl lg:text-5xl font-serif italic text-texto leading-tight break-words pr-2 mb-4">{detailedProduct.get("name")}</h1>
+                  
+                  <div className="mb-8 border-b border-borda pb-6">
+                    {getActivePromo(detailedProduct).isActive ? (
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-2xl md:text-3xl font-bold text-texto tabular-nums">R$ {getActivePromo(detailedProduct).price.toFixed(2)}</span>
+                        <span className="text-base md:text-lg line-through text-texto-sec tabular-nums">R$ {detailedProduct.get("price").toFixed(2)}</span>
+                      </div>
                     ) : (
-                      productReviews.slice(0, 3).map((review) => (
-                        <div key={review.id} className="bg-fundo p-4 rounded-xl md:rounded-2xl border border-borda flex flex-col">
-                          <div className="flex items-center gap-1 mb-3">
-                            {[1, 2, 3, 4, 5].map(star => (
-                              <Star key={star} className={`w-3 h-3 md:w-4 md:h-4 ${star <= review.get("rating") ? 'text-texto fill-texto' : 'text-texto/20'}`} />
-                            ))}
-                          </div>
-                          <p className="text-sm text-texto mb-3 flex-1 italic">"{review.get("comment")}"</p>
-                          <p className="text-[10px] md:text-xs font-bold text-texto-sec uppercase">— {review.get("userName")}</p>
-                        </div>
-                      ))
+                      <span className="text-2xl md:text-3xl font-bold text-texto tabular-nums">R$ {detailedProduct.get("price").toFixed(2)}</span>
                     )}
                   </div>
-
-                  {activeUser ? (
-                    <form onSubmit={submitReview} className="bg-fundo p-4 md:p-5 rounded-xl md:rounded-2xl border border-borda">
-                      <p className="text-xs font-bold text-texto mb-3">Deixe sua avaliação</p>
-                      <div className="flex items-center gap-1 mb-4">
-                        {[1, 2, 3, 4, 5].map(star => (
-                          <button type="button" key={star} onClick={() => setNewReviewRating(star)} className="focus:outline-none hover:opacity-70 transition-opacity">
-                            <Star className={`w-5 h-5 md:w-6 md:h-6 ${star <= newReviewRating ? 'text-texto fill-texto' : 'text-texto/20'}`} />
-                          </button>
+                  
+                  {/* Descrição Aberta */}
+                  <p className="text-texto-sec leading-relaxed mb-8 whitespace-pre-line text-sm sm:text-base md:text-lg">{detailedProduct.get("description")}</p>
+                  
+                  {/* Variantes - MANTIDO */}
+                  {(detailedProduct.get("variants") || []).length > 0 && (
+                    <div className="mb-8 pb-8 border-b border-borda">
+                      <p className="text-[10px] font-bold text-texto uppercase tracking-wider mb-3.5">Escolha a Opção</p>
+                      <div className="flex flex-wrap gap-2.5">
+                        {(detailedProduct.get("variants") || []).map(v => (
+                          <button key={v} onClick={() => setDetailedVariant(v)} className={`px-5 py-3 sm:px-6 sm:py-3 rounded-full text-xs md:text-sm font-bold transition-colors border ${detailedVariant === v ? 'border-texto bg-texto text-card shadow-md' : 'border-borda bg-card text-texto-sec hover:border-texto'}`}>{v}</button>
                         ))}
                       </div>
-                      <textarea required rows="2" value={newReviewComment} onChange={(e) => setNewReviewComment(e.target.value)} placeholder="O que achou deste produto?" className="w-full px-4 py-3 bg-card border border-borda text-sm text-texto rounded-xl focus:ring-2 focus:ring-texto focus:outline-none resize-none mb-3" />
-                      <button type="submit" disabled={isSubmittingReview} className="px-5 py-2.5 bg-btn text-btn-texto font-bold text-xs md:text-sm rounded-lg hover:opacity-90 transition-opacity duration-300 disabled:opacity-50">
-                        {isSubmittingReview ? "Enviando..." : "Enviar Avaliação"}
-                      </button>
-                    </form>
-                  ) : (
-                    <div className="bg-fundo p-4 rounded-xl border border-borda text-center">
-                      <p className="text-sm text-texto-sec mb-2">Faça login para deixar uma avaliação.</p>
-                      <button onClick={onRequireLogin} className="text-texto font-bold text-sm hover:underline">Fazer Login</button>
                     </div>
                   )}
+
+                  {/* 👇 5. CORREÇÃO: Bloco de Quantidade e Estoque foi TOTALMENTE EXCLUÍDO conforme solicitado 👇 */}
+
+                  {/* Avaliações */}
+                  <div className="mb-8 border-t border-borda pt-8">
+                    <h3 className="text-[11px] md:text-sm font-bold text-texto uppercase tracking-wider mb-6">Avaliações</h3>
+                    
+                    {/* 👇 6. CORREÇÃO: Grid mudou para md:grid-cols-2 para avaliações ficarem lado a lado no PC 👇 */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-8">
+                      {productReviews.length === 0 ? (
+                        <p className="text-xs text-texto-sec italic md:col-span-3">Ainda não há avaliações.</p>
+                      ) : (
+                        // O [...review].reverse().slice(0, 3) inverte a lista para pegar as últimas 3!
+                        [...productReviews].reverse().slice(0, 3).map((review) => (
+                          <div key={review.id} className="bg-fundo p-3 md:p-4 rounded-xl border border-borda flex flex-col shadow-sm">
+                            <div className="flex items-center gap-0.5 mb-2.5">
+                              {[1, 2, 3, 4, 5].map(star => (
+                                <Star key={star} className={`w-3 h-3 ${star <= review.get("rating") ? 'text-texto fill-texto' : 'text-texto/20'}`} />
+                              ))}
+                            </div>
+                            <p className="text-[10px] md:text-xs text-texto mb-2 flex-1 italic leading-relaxed line-clamp-3">"{review.get("comment")}"</p>
+                            <p className="text-[8px] md:text-[9px] font-bold text-texto-sec uppercase">— {review.get("userName")}</p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Form Avaliação Pílula Compacto - MANTIDO */}
+                    {activeUser ? (
+                      <form onSubmit={submitReview} className="bg-card p-1.5 rounded-full border border-borda flex items-center gap-2 focus-within:ring-1 focus-within:ring-texto focus-within:border-texto transition-all shadow-sm">
+                        <div className="flex items-center pl-3 shrink-0">
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button type="button" key={star} onClick={() => setNewReviewRating(star)} className="focus:outline-none transition-transform hover:scale-110">
+                              <Star className={`w-4 h-4 md:w-5 md:h-5 ${star <= newReviewRating ? 'text-texto fill-texto' : 'text-texto/20'}`} />
+                            </button>
+                          ))}
+                        </div>
+                        <input required type="text" value={newReviewComment} onChange={(e) => setNewReviewComment(e.target.value)} placeholder="Deixe sua avaliação..." className="flex-1 bg-transparent text-xs md:text-sm text-texto outline-none placeholder:text-texto/40 min-w-0 py-2" />
+                        <button type="submit" disabled={isSubmittingReview} className="shrink-0 px-5 py-2.5 bg-btn text-btn-texto font-bold text-[10px] md:text-xs rounded-full hover:opacity-90 transition-opacity duration-300 disabled:opacity-50">
+                          {isSubmittingReview ? "..." : "Enviar"}
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="bg-fundo p-4 rounded-xl border border-borda text-center">
+                        <p className="text-xs text-texto-sec mb-2">Faça login para avaliar.</p>
+                        <button onClick={onRequireLogin} className="text-texto font-bold text-xs hover:underline">Fazer Login</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                
-                <div className="mt-auto pt-6 md:pt-8 border-t border-borda">
-                  <button onClick={() => processAddToCart(detailedProduct, detailedVariant)} disabled={detailedProduct.get("stock") <= 0} className="w-full py-4 md:py-5 lg:py-6 bg-btn text-btn-texto text-base md:text-lg font-bold rounded-xl md:rounded-2xl hover:opacity-90 transition-opacity duration-300 shadow-xl disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 md:gap-3">
-                    <ShoppingBag className="w-5 h-5 md:w-6 md:h-6" /> {detailedProduct.get("stock") <= 0 ? "Fora de Estoque" : "Adicionar à Sacola"}
+
+                {/* Botão Fixo Comprar - MANTIDO */}
+                <div className="mt-auto pt-8 pb-2 border-t border-borda">
+                  <button 
+                    onClick={() => processAddToCart(detailedProduct, detailedVariant, detailedQuantity)} 
+                    disabled={detailedProduct.get("stock") <= 0} 
+                    className="w-full h-14 md:h-16 bg-btn text-btn-texto text-base md:text-lg font-bold rounded-xl hover:opacity-90 transition-opacity duration-300 shadow-2xl disabled:opacity-50 flex items-center justify-center gap-3 active:scale-[0.98] transition-transform"
+                  >
+                    <ShoppingBag className="w-5 h-5 md:w-6 md:h-6" /> {detailedProduct.get("stock") <= 0 ? "Esgotado" : "Adicionar à Sacola"}
                   </button>
                 </div>
               </div>
-            </motion.div>
-          </div>
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
@@ -1581,8 +1678,8 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               <h4 className="font-bold text-texto mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-wider">Fique por dentro</h4>
               <p className="text-texto-sec text-xs md:text-sm mb-3 md:mb-4">Assine nossa newsletter para receber novidades.</p>
               <form onSubmit={handleSubscribeNewsletter} className="flex gap-2">
-                <input type="email" required value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)} placeholder="Seu e-mail..." className="flex-1 bg-fundo border border-borda rounded-lg px-3 md:px-4 py-2 text-xs md:text-sm focus:ring-2 focus:ring-texto focus:outline-none text-texto min-w-0" />
-                <button type="submit" disabled={isSubscribing} className="bg-btn text-btn-texto px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-bold hover:opacity-90 transition-opacity duration-300 shrink-0 disabled:opacity-50">
+                <input type="email" required value={newsletterEmail} onChange={(e) => setNewsletterEmail(e.target.value)} placeholder="Seu e-mail..." className="flex-1 h-10 bg-fundo border border-borda rounded-lg px-3 md:px-4 text-xs md:text-sm focus:outline-none text-texto min-w-0" />
+                <button type="submit" disabled={isSubscribing} className="bg-btn text-btn-texto h-10 px-4 rounded-lg text-xs md:text-sm font-bold hover:opacity-90 transition-opacity duration-300 shrink-0 disabled:opacity-50">
                   {isSubscribing ? "..." : "Assinar"}
                 </button>
               </form>
@@ -1599,6 +1696,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
         </div>
       </footer>
 
+      {/* Toast notificação flutuante */}
       <div className={`fixed bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 bg-btn text-btn-texto px-4 md:px-6 py-2.5 md:py-3 rounded-full shadow-2xl flex items-center gap-2 md:gap-3 transform transition-all duration-300 z-50 ${toast.show ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"}`}>
         <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
         <span className="font-bold text-xs md:text-sm whitespace-nowrap">{toast.message}</span>
