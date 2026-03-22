@@ -59,11 +59,22 @@ export default function AdminPanel({ onBack }) {
   const [currentPromoBannerUrl, setCurrentPromoBannerUrl] = useState(DEFAULT_PROMO_BANNER_IMG);
   const [linkPromoBannerUrl, setLinkPromoBannerUrl] = useState(""); 
 
-  // 👇 NOVOS ESTADOS PARA O "SHOP THE LOOK"
+  // Shop the Look
   const [lookBannerFile, setLookBannerFile] = useState(null);
   const [currentLookBannerUrl, setCurrentLookBannerUrl] = useState("");
   const [linkLookBannerUrl, setLinkLookBannerUrl] = useState("");
-  const [lookItems, setLookItems] = useState([]); // Vai guardar os pontinhos
+  const [lookItems, setLookItems] = useState([]);
+
+  // 👇 NOVOS ESTADOS PARA O BANNER TERCIÁRIO 👇
+  const [thirdBannerActive, setThirdBannerActive] = useState(true);
+  const [thirdBannerTitle, setThirdBannerTitle] = useState("");
+  const [thirdBannerDesc, setThirdBannerDesc] = useState("");
+  const [thirdBannerBtn, setThirdBannerBtn] = useState("");
+  const [thirdBannerBtnLink, setThirdBannerBtnLink] = useState("");
+  const [thirdBannerFile, setThirdBannerFile] = useState(null);
+  const [currentThirdBannerUrl, setCurrentThirdBannerUrl] = useState("");
+  const [linkThirdBannerUrl, setLinkThirdBannerUrl] = useState("");
+  // 👆 FIM DOS NOVOS ESTADOS 👆
 
   const availableCategories = [...new Set(products.flatMap(p => p.get("categories") || [p.get("category")]).filter(Boolean))];
 
@@ -140,7 +151,7 @@ export default function AdminPanel({ onBack }) {
   const fetchProducts = async () => {
     try { 
       const query = new Parse.Query("Product");
-      query.descending("createdAt"); // Mostra os mais recentes primeiro
+      query.descending("createdAt");
       setProducts(await query.find()); 
     } catch (e) { console.error(e); }
   };
@@ -151,6 +162,7 @@ export default function AdminPanel({ onBack }) {
       if (res.length > 0) {
         const s = res[0]; setSettingsId(s.id);
         setBanners(s.get("banners")?.map((b, i) => ({ ...b, id: `b-${i}`, file: null, linkUrl: "" })) || []);
+        
         setInfoBannerActive(s.get("infoBannerActive") !== false);
         setInfoBannerTitle(s.get("infoBannerTitle") || "");
         setInfoBannerDesc(s.get("infoBannerDesc") || "");
@@ -161,9 +173,17 @@ export default function AdminPanel({ onBack }) {
         setPromoBannerDesc(s.get("promoBannerDesc") || "");
         setCurrentPromoBannerUrl(s.get("promoBannerImageUrl") || DEFAULT_PROMO_BANNER_IMG);
 
-        // 👇 PUXANDO OS DADOS DO SHOP THE LOOK
         setCurrentLookBannerUrl(s.get("lookImageUrl") || "");
         setLookItems(s.get("lookItems") || []);
+
+        // 👇 PUXANDO OS DADOS DO BANNER TERCIÁRIO 👇
+        setThirdBannerActive(s.get("thirdBannerActive") !== false);
+        setThirdBannerTitle(s.get("thirdBannerTitle") || "");
+        setThirdBannerDesc(s.get("thirdBannerDesc") || "");
+        setThirdBannerBtn(s.get("thirdBannerBtn") || "");
+        setThirdBannerBtnLink(s.get("thirdBannerBtnLink") || "");
+        setCurrentThirdBannerUrl(s.get("thirdBannerImageUrl") || "");
+        // 👆 FIM DA BUSCA 👆
       }
     } catch (e) { console.error(e); }
   };
@@ -192,7 +212,6 @@ export default function AdminPanel({ onBack }) {
       if (discountPrice && discountEndsAt) { p.set("discountPrice", Number(discountPrice)); p.set("discountEndsAt", new Date(discountEndsAt)); }
       else { p.unset("discountPrice"); p.unset("discountEndsAt"); }
 
-      // 👇 A DESCRIÇÃO AGORA SALVA SEMPRE, MESMO SEM O SELO PREMIUM
       p.set("description", description);
 
       if (hasDetails) {
@@ -224,8 +243,8 @@ export default function AdminPanel({ onBack }) {
     setDescription(p.get("description") || "");
     setCurrentImageUrl(p.get("imageUrl")); setEditingId(p.id); 
     
-    setIsFormOpen(true); // Abre o formulário ao clicar em editar
-    window.scrollTo({ top: 0, behavior: 'smooth' }); // Sobe a tela para o formulário
+    setIsFormOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteProduct = async (id) => {
@@ -245,14 +264,16 @@ export default function AdminPanel({ onBack }) {
         finalBanners.push({ imageUrl: url, tag: b.tag, title: b.title, desc: b.desc, btn: b.btn, target: b.target });
       }
       s.set("banners", finalBanners);
+      
+      // Banner 2 (Secundário)
       s.set("infoBannerActive", infoBannerActive); s.set("infoBannerTitle", infoBannerTitle);
       s.set("infoBannerDesc", infoBannerDesc); s.set("infoBannerBtn", infoBannerBtn);
       if (infoBannerFile) { const f = new Parse.File("info", infoBannerFile); await f.save(); s.set("infoBannerImageUrl", f.url()); }
       else if (linkInfoBannerUrl.trim()) s.set("infoBannerImageUrl", linkInfoBannerUrl.trim());
 
+      // Banner de Ofertas
       s.set("promoBannerTitle", promoBannerTitle);
       s.set("promoBannerDesc", promoBannerDesc);
-      
       if (promoBannerFile) { 
         const f = new Parse.File("promo", promoBannerFile); 
         await f.save(); 
@@ -261,7 +282,7 @@ export default function AdminPanel({ onBack }) {
         s.set("promoBannerImageUrl", linkPromoBannerUrl.trim()); 
       }
 
-      // 👇 SALVANDO OS DADOS DO SHOP THE LOOK
+      // Shop The Look
       if (lookBannerFile) { 
         const f = new Parse.File("look", lookBannerFile); 
         await f.save(); 
@@ -272,7 +293,6 @@ export default function AdminPanel({ onBack }) {
         s.unset("lookImageUrl");
       }
       
-      // Limpa os itens para salvar no Parse sem coisas inúteis
       const cleanLookItems = lookItems.map(item => ({
         productId: item.productId,
         x: item.x,
@@ -281,11 +301,27 @@ export default function AdminPanel({ onBack }) {
       }));
       s.set("lookItems", cleanLookItems);
 
+      // 👇 SALVANDO O BANNER TERCIÁRIO NO PARSE 👇
+      s.set("thirdBannerActive", thirdBannerActive);
+      s.set("thirdBannerTitle", thirdBannerTitle);
+      s.set("thirdBannerDesc", thirdBannerDesc);
+      s.set("thirdBannerBtn", thirdBannerBtn);
+      s.set("thirdBannerBtnLink", thirdBannerBtnLink);
+      if (thirdBannerFile) { 
+        const f = new Parse.File("third", thirdBannerFile); 
+        await f.save(); 
+        s.set("thirdBannerImageUrl", f.url()); 
+      } else if (linkThirdBannerUrl.trim()) { 
+        s.set("thirdBannerImageUrl", linkThirdBannerUrl.trim()); 
+      } else if (!currentThirdBannerUrl && !linkThirdBannerUrl) {
+        s.unset("thirdBannerImageUrl");
+      }
+      // 👆 FIM DO SALVAMENTO 👆
+
       await s.save(); alert("Aparência da loja atualizada!"); fetchSettings();
     } catch (err) { alert(err.message); } finally { setSavingSettings(false); }
   };
 
-  // Função para facilitar a escolha de datas na Oferta
   const setQuickDate = (days) => {
     const d = new Date();
     d.setDate(d.getDate() + days);
@@ -765,7 +801,6 @@ export default function AdminPanel({ onBack }) {
                     </div>
                   </div>
 
-                  {/* 👇 NOVO: GERENCIADOR DO SHOP THE LOOK 👇 */}
                   <div className="pt-10 border-t border-neutral-200">
                     <div className="flex justify-between items-start mb-6">
                       <div>
@@ -777,7 +812,6 @@ export default function AdminPanel({ onBack }) {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* LADO ESQUERDO: A FOTO INTERATIVA */}
                       <div className="space-y-4">
                         <div className="flex justify-between items-center">
                           <label className="block text-xs font-bold text-neutral-500 uppercase">Imagem do Look (Vertical/Retrato)</label>
@@ -786,11 +820,9 @@ export default function AdminPanel({ onBack }) {
                           )}
                         </div>
 
-                        {/* ÁREA CLICÁVEL DA FOTO */}
                         <div 
                           className={`w-full aspect-[3/4] max-w-sm mx-auto rounded-2xl overflow-hidden relative shadow-sm border border-neutral-200 transition-all ${(lookBannerFile || currentLookBannerUrl || linkLookBannerUrl) ? 'cursor-crosshair' : 'bg-neutral-100 flex items-center justify-center'}`}
                           onClick={(e) => {
-                            // A mágica matemática que pega a coordenada exata do clique
                             if (!lookBannerFile && !currentLookBannerUrl && !linkLookBannerUrl) return;
                             const rect = e.currentTarget.getBoundingClientRect();
                             const x = ((e.clientX - rect.left) / rect.width) * 100;
@@ -804,7 +836,6 @@ export default function AdminPanel({ onBack }) {
                               <img src={lookBannerFile ? URL.createObjectURL(lookBannerFile) : (linkLookBannerUrl || currentLookBannerUrl)} alt="Preview Look" className="absolute inset-0 w-full h-full object-cover" />
                               <div className="absolute inset-0 bg-black/10 pointer-events-none"></div>
                               
-                              {/* Renderiza as bolinhas onde você clicou */}
                               {lookItems.map((item, idx) => (
                                 <div key={item.id || idx} className="absolute z-10 w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40 border-2 border-white backdrop-blur-sm flex items-center justify-center shadow-lg pointer-events-none" style={{ top: `${item.y}%`, left: `${item.x}%` }}>
                                   <span className="w-2 h-2 rounded-full bg-neutral-900"></span>
@@ -820,7 +851,6 @@ export default function AdminPanel({ onBack }) {
                           )}
                         </div>
 
-                        {/* INPUTS DE IMAGEM */}
                         <div className="flex flex-col gap-2 p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
                           <input type="file" accept="image/*" onChange={(e) => {setLookBannerFile(e.target.files[0]); setCurrentLookBannerUrl(""); setLinkLookBannerUrl("");}} className="w-full text-xs" />
                           <div className="flex items-center gap-2"><div className="flex-1 h-px bg-neutral-200"></div><span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">OU LINK</span><div className="flex-1 h-px bg-neutral-200"></div></div>
@@ -828,7 +858,6 @@ export default function AdminPanel({ onBack }) {
                         </div>
                       </div>
 
-                      {/* LADO DIREITO: LISTA DE PRODUTOS MARCADOS */}
                       <div className="bg-neutral-50 p-6 rounded-2xl border border-neutral-200">
                         <div className="flex justify-between items-center mb-6">
                           <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Peças Marcadas ({lookItems.length})</h3>
@@ -867,7 +896,6 @@ export default function AdminPanel({ onBack }) {
                       </div>
                     </div>
                   </div>
-                  {/* 👆 FIM DO GERENCIADOR DO SHOP THE LOOK 👆 */}
 
                   <div className="pt-10 border-t border-neutral-200">
                     <div className="flex justify-between items-start mb-2">
@@ -893,6 +921,62 @@ export default function AdminPanel({ onBack }) {
                       </div>
                     </div>
                   </div>
+
+                  {/* 👇 NOVA SESSÃO: BANNER TERCIÁRIO 👇 */}
+                  <div className="pt-10 border-t border-neutral-200">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h2 className="text-2xl font-semibold mb-1 flex items-center gap-2"><ImageIcon className="w-6 h-6 text-neutral-400" /> Banner Terciário (Fim de Página)</h2>
+                        <p className="text-neutral-500 text-sm">Uma última chance de chamar a atenção do cliente logo após o catálogo de produtos.</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer mt-1">
+                        <input type="checkbox" className="sr-only peer" checked={thirdBannerActive} onChange={(e) => setThirdBannerActive(e.target.checked)} />
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neutral-900"></div>
+                        <span className="ml-3 text-sm font-bold text-neutral-900 uppercase">Ativado</span>
+                      </label>
+                    </div>
+
+                    <div className={`transition-opacity duration-300 mt-6 ${!thirdBannerActive && "opacity-40 pointer-events-none"}`}>
+                      {/* PREVIEW DO BANNER 3 */}
+                      <div className="w-full h-32 rounded-xl overflow-hidden relative shadow-sm border border-neutral-200 bg-neutral-900 mb-6">
+                        {(thirdBannerFile || currentThirdBannerUrl || linkThirdBannerUrl) && (
+                           /\.(mp4|webm|ogg|mov)$/i.test(linkThirdBannerUrl || currentThirdBannerUrl) ? (
+                            <div className="absolute inset-0 flex items-center justify-center bg-black/60 text-white font-bold text-xs"><Timer className="w-4 h-4 mr-2"/> Vídeo será exibido na loja</div>
+                          ) : (
+                            <img src={thirdBannerFile ? URL.createObjectURL(thirdBannerFile) : (linkThirdBannerUrl || currentThirdBannerUrl)} alt="Preview Terciário" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                          )
+                        )}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                          <h3 className="text-xl font-serif italic text-white mb-1">{thirdBannerTitle || "Descubra o Novo"}</h3>
+                          <p className="text-[10px] text-white/80">{thirdBannerDesc || "Uma seleção especial de peças..."}</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título Principal</label><input type="text" value={thirdBannerTitle} onChange={(e) => setThirdBannerTitle(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
+                          <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Texto Menor</label><input type="text" value={thirdBannerDesc} onChange={(e) => setThirdBannerDesc(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
+                          <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Texto do Botão</label><input type="text" value={thirdBannerBtn} onChange={(e) => setThirdBannerBtn(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
+                          <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Link do Botão</label><input type="text" value={thirdBannerBtnLink} onChange={(e) => setThirdBannerBtnLink(e.target.value)} placeholder="Ex: #ofertas ou https://..." className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between items-end mb-1">
+                            <label className="block text-xs font-medium text-neutral-500 uppercase">Mídia de Fundo (Foto ou Vídeo .mp4)</label>
+                            {(thirdBannerFile || currentThirdBannerUrl || linkThirdBannerUrl) && (
+                              <button type="button" onClick={() => { setThirdBannerFile(null); setCurrentThirdBannerUrl(""); setLinkThirdBannerUrl(""); const fi = document.getElementById('third-banner-file'); if (fi) fi.value = ""; }} className="flex items-center gap-1 text-[10px] text-red-500 hover:text-red-700 font-bold transition-colors uppercase tracking-wider bg-red-50 px-2 py-1 rounded-md"><Trash2 className="w-3 h-3" /> Remover Mídia</button>
+                            )}
+                          </div>
+                          <div className="flex flex-col gap-2 p-3 bg-white border border-neutral-200 rounded-xl">
+                            <input id="third-banner-file" type="file" accept="video/mp4,video/webm,image/*" onChange={(e) => {setThirdBannerFile(e.target.files[0]); setCurrentThirdBannerUrl(""); setLinkThirdBannerUrl("");}} className="w-full text-xs" />
+                            <div className="flex items-center gap-2"><div className="flex-1 h-px bg-neutral-200"></div><span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">OU LINK PÚBLICO</span><div className="flex-1 h-px bg-neutral-200"></div></div>
+                            <input type="url" placeholder="Ex: https://seusite.com/video.mp4" value={linkThirdBannerUrl} onChange={(e) => {setLinkThirdBannerUrl(e.target.value); setThirdBannerFile(null);}} className="w-full px-3 py-2 text-sm bg-neutral-50 border border-neutral-200 rounded-md outline-none" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* 👆 FIM DO BANNER TERCIÁRIO 👆 */}
 
                   <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
                     <button type="submit" disabled={savingSettings} className="px-8 py-4 bg-neutral-900 text-white font-bold rounded-full hover:scale-105 transition-all shadow-2xl flex items-center gap-3">

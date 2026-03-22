@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Parse from "../parseSetup";
-import { Search, LogOut, ShoppingBag, X, Plus, Minus, Trash2, CheckCircle, Loader2, User, Package, Settings, Instagram, Facebook, Twitter, Timer, Menu, CreditCard, QrCode, Truck, MessageCircle, Heart, TrendingUp, Sun, Moon, ArrowLeft, Star, Sparkles, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, MapPin } from "lucide-react";
+import { Search, LogOut, ShoppingBag, X, Plus, Minus, Trash2, CheckCircle, Loader2, User, Package, Settings, Instagram, Facebook, Twitter, Timer, Menu, CreditCard, QrCode, Truck, MessageCircle, Heart, TrendingUp, Sun, Moon, ArrowLeft, Star, Sparkles, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, MapPin, Github } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 
 // ============================================================================
@@ -315,7 +315,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     if (element) {
       // 👇 O respiro mágico! Aumentamos de 80 para 140 pixels.
       // Isso impede que o cabeçalho "coma" a sessão ao passar a página.
-      const headerOffset = 30; 
+      const headerOffset = 140; 
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
       window.scrollTo({ top: offsetPosition, behavior: "smooth" });
@@ -629,16 +629,30 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
   const tabVariants = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }, exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: "easeIn" } } };
 
+  // ============================================================================
+  // DADOS DOS BANNERS (Variáveis Diretas do storeSettings para melhor performance)
+  // ============================================================================
   const bannersArray = storeSettings?.get("banners") || [{ imageUrl: storeSettings?.get("bannerImageUrl") || "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop", tag: storeSettings?.get("bannerTag") || "Novidades", title: storeSettings?.get("bannerTitle") || "Coleção Essência", desc: storeSettings?.get("bannerDesc") || "Descubra o frescor.", btn: storeSettings?.get("bannerBtn") || "Descobrir Agora", target: storeSettings?.get("bannerTarget") || "lancamentos" }];
+  
+  // Banner 2 (O Secundário de Informações)
   const infoBannerActive = storeSettings ? storeSettings.get("infoBannerActive") !== false : true;
   const infoBannerTitle = storeSettings?.get("infoBannerTitle") !== undefined ? storeSettings.get("infoBannerTitle") : "Coleção de Outono";
   const infoBannerDesc = storeSettings?.get("infoBannerDesc") !== undefined ? storeSettings.get("infoBannerDesc") : "Não perca nossa coleção exclusiva por tempo limitado.";
   const infoBannerBtn = storeSettings?.get("infoBannerBtn") !== undefined ? storeSettings.get("infoBannerBtn") : "Explorar";
   const infoBannerImageUrl = storeSettings?.get("infoBannerImageUrl") || "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop";
 
+  // Banner de Promoção
   const promoBannerTitle = storeSettings?.get("promoBannerTitle") || "Ofertas Especiais";
   const promoBannerDesc = storeSettings?.get("promoBannerDesc") || "Uma seleção exclusiva de peças com condições únicas. Não deixe para depois.";
   const promoBannerImageUrl = storeSettings?.get("promoBannerImageUrl") || "";
+
+  // 👇 NOVOS: BANNER TERCIÁRIO (Abaixo do catálogo) 👇
+  const thirdBannerActive = storeSettings ? storeSettings.get("thirdBannerActive") !== false : true;
+  const thirdBannerTitle = storeSettings?.get("thirdBannerTitle") || "";
+  const thirdBannerDesc = storeSettings?.get("thirdBannerDesc") || "";
+  const thirdBannerBtn = storeSettings?.get("thirdBannerBtn") || "";
+  const thirdBannerBtnLink = storeSettings?.get("thirdBannerBtnLink") || "#";
+  const thirdBannerImageUrl = storeSettings?.get("thirdBannerImageUrl") || "";
 
   // 👇 MOTOR INTELIGENTE DO BANNER (Consertado com React.memo)
   useEffect(() => {
@@ -980,10 +994,27 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                         <section className="mt-8 md:mt-24 mb-4">
                           
                           {/* 👇 BANNER: Fino no mobile, Grande no Desktop 👇 */}
-                          <div className="relative w-full h-[20vh] min-h-[160px] md:h-[50vh] rounded-[20px] md:rounded-[32px] overflow-hidden shadow-sm group">
-                            <img src={infoBannerImageUrl} alt={infoBannerTitle} loading="lazy" className="absolute inset-0 w-full h-full object-cover object-center" />
-                            <div className="absolute inset-0 bg-black/40 transition-colors hover:bg-black/50 duration-500"></div>
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-10">
+                          <div className="relative w-full h-[20vh] min-h-[160px] md:h-[50vh] rounded-[20px] md:rounded-[32px] overflow-hidden shadow-sm group bg-texto transition-colors">
+                            {/* 👇 MÁGICA DO VÍDEO/IMAGEM: Se o link terminar em .mp4, toca o vídeo. Se não, mostra a foto! */}
+                            {infoBannerImageUrl && /\.(mp4|webm|ogg|mov)$/i.test(infoBannerImageUrl) ? (
+                              <video 
+                                src={infoBannerImageUrl} 
+                                autoPlay 
+                                loop 
+                                muted 
+                                playsInline 
+                                className="absolute inset-0 w-full h-full object-cover object-center z-0" 
+                              />
+                            ) : infoBannerImageUrl ? (
+                              <img 
+                                src={infoBannerImageUrl} 
+                                alt={infoBannerTitle} 
+                                loading="lazy" 
+                                className="absolute inset-0 w-full h-full object-cover object-center z-0" 
+                              />
+                            ) : null}
+                            <div className="absolute inset-0 bg-black/40 transition-colors hover:bg-black/50 duration-500 z-10"></div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20">
                               <h2 className="text-3xl sm:text-4xl md:text-6xl font-serif italic text-white mb-2 md:mb-4 drop-shadow-md break-words">{infoBannerTitle}</h2>
                               <p className="text-xs md:text-xl text-white/90 max-w-2xl mb-4 md:mb-8 drop-shadow-sm font-light px-4">{infoBannerDesc}</p>
                               {infoBannerBtn && (
@@ -1217,6 +1248,56 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                           </div>
                         )}
                       </section>
+
+                      {/* ==============================================================================
+                          👇 NOVO BANNER TERCIÁRIO (Abaixo do Catálogo) 👇
+                          ============================================================================== */}
+                      {thirdBannerActive && (
+                        <section className="mt-12 md:mt-24 mb-10 md:mb-16">
+                          
+                          <div className="relative w-full h-[20vh] min-h-[160px] md:h-[50vh] shadow-sm group bg-texto rounded-[20px] md:rounded-[32px]">
+                            
+                            {thirdBannerImageUrl && /\.(mp4|webm|ogg|mov)$/i.test(thirdBannerImageUrl) ? (
+                              <video 
+                                src={thirdBannerImageUrl} 
+                                autoPlay 
+                                loop 
+                                muted 
+                                playsInline 
+                                className="absolute inset-0 w-full h-full object-cover object-center z-0 pointer-events-none rounded-[20px] md:rounded-[32px]" 
+                              />
+                            ) : thirdBannerImageUrl ? (
+                              <img 
+                                src={thirdBannerImageUrl} 
+                                alt={thirdBannerTitle} 
+                                loading="lazy" 
+                                className="absolute inset-0 w-full h-full object-cover object-center z-0 rounded-[20px] md:rounded-[32px]" 
+                              />
+                            ) : null}
+
+                            {/* Película escura com rounded direto nela */}
+                            <div className="absolute inset-0 bg-black/40 z-10 pointer-events-none rounded-[20px] md:rounded-[32px]"></div>
+                            
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20">
+                              <h2 className="text-3xl sm:text-4xl md:text-6xl font-serif italic text-white mb-2 md:mb-4 drop-shadow-md break-words">{thirdBannerTitle}</h2>
+                              <p className="text-xs md:text-xl text-white/90 max-w-2xl mb-4 md:mb-8 drop-shadow-sm font-light px-4">{thirdBannerDesc}</p>
+                              
+                              {thirdBannerBtn && (
+                                <a 
+                                  href={thirdBannerBtnLink}
+                                  className="inline-block px-5 py-2 md:px-8 md:py-3 bg-white text-neutral-900 font-bold rounded-full hover:bg-neutral-200 transition-colors duration-300 shadow-xl text-xs md:text-base pointer-events-auto"
+                                >
+                                  {thirdBannerBtn}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </section>
+                      )}
+                      {/* ==============================================================================
+                          👆 FIM DO BANNER TERCIÁRIO 👆
+                          ============================================================================== */}
+
                     </>
                   )}
                 </>
@@ -1812,7 +1893,15 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
             <div className="flex items-center gap-4 md:gap-6 text-card/70">
               <Instagram className="w-4 h-4 md:w-5 md:h-5 hover:text-card transition-colors cursor-pointer" />
               <Facebook className="w-4 h-4 md:w-5 md:h-5 hover:text-card transition-colors cursor-pointer" />
-              <Twitter className="w-4 h-4 md:w-5 md:h-5 hover:text-card transition-colors cursor-pointer" />
+            
+              <a 
+                href="https://github.com/uGuilherm3" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="hover:text-card transition-colors"
+              >
+                <Github className="w-4 h-4 md:w-5 md:h-5 cursor-pointer" />
+              </a>
             </div>
           </div>
           
