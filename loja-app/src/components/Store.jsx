@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Parse from "../parseSetup";
-import { Search, LogOut, ShoppingBag, X, Plus, Minus, Trash2, CheckCircle, Loader2, User, Package, Settings, Instagram, Facebook, Twitter, Timer, Menu, CreditCard, QrCode, Truck, MessageCircle, Heart, TrendingUp, Sun, Moon, ArrowLeft, Star, Sparkles, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, MapPin, Github } from "lucide-react";
+import { Search, LogOut, ShoppingBag, X, Plus, Minus, Trash2, CheckCircle, Loader2, User, Package, Settings, Instagram, Facebook, Twitter, Timer, Menu, CreditCard, QrCode, Truck, MessageCircle, Heart, TrendingUp, Sun, Moon, ArrowLeft, Star, Sparkles, Camera, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, MapPin, Github, Home } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
 
 // ============================================================================
 // COMPONENTES ISOLADOS E BLINDADOS (PERFORMANCE HIGH-END)
-// O React.memo impede que os cards sejam redesenhados quando o banner gira
 // ============================================================================
 
 const PromoTimer = React.memo(({ endsAt }) => {
@@ -27,7 +26,7 @@ const PromoTimer = React.memo(({ endsAt }) => {
   return <span className="text-white font-bold text-[10px] tracking-widest uppercase">Termina em {hours}h {minutes}m</span>;
 });
 
-// Card Padrão Blindado
+// 👇 CARD PADRÃO OTIMIZADO PARA MOBILE 👇
 const StandardProductCard = React.memo(({ product, config, isFav, promo, onOpenDetails, onToggleFav, onAddToCart }) => {
   const { aspectClass = "aspect-[3/4]", tag = null, wrapClass = "w-full" } = config;
   const isOutOfStock = product.get("stock") <= 0;
@@ -35,36 +34,36 @@ const StandardProductCard = React.memo(({ product, config, isFav, promo, onOpenD
 
   return (
     <div className={`relative shrink-0 ${wrapClass} snap-center pb-4 pt-2`}>
-      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group w-full h-full ${aspectClass} relative rounded-[24px] md:rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group w-full h-full ${aspectClass} relative rounded-[20px] md:rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
         <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         
-        <div className="absolute top-4 left-4 md:top-5 md:left-5 flex items-center gap-2 z-30 pointer-events-none">
-          {tag && <div className="bg-texto text-card text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md">{tag}</div>}
+        <div className="absolute top-3 left-3 md:top-5 md:left-5 flex items-center gap-2 z-30 pointer-events-none">
+          {tag && <div className="bg-texto text-card text-[9px] md:text-xs font-bold px-2.5 py-1 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md">{tag}</div>}
           {hasDetails && !isOutOfStock && (
-            <div className={`backdrop-blur-md text-neutral-900 text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 transition-opacity ${tag ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100 bg-white/30'}`}>
-              <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> Premium
+            <div className={`backdrop-blur-md text-neutral-900 text-[9px] md:text-xs font-bold px-2.5 py-1 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1.5 transition-opacity opacity-100 md:opacity-0 md:group-hover:opacity-100 ${tag ? '' : 'bg-white/40 md:bg-white/30'}`}>
+              <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> <span className="hidden min-[350px]:inline">Premium</span>
             </div>
           )}
         </div>
 
-        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-card/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/50 transition-colors duration-300 z-30 shadow-sm">
-          <Heart className="w-4 h-4 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-3 right-3 md:top-5 md:right-5 p-2 md:p-3 bg-card/40 backdrop-blur-lg rounded-full text-texto hover:bg-card/70 transition-colors duration-300 z-30 shadow-sm">
+          <Heart className="w-3.5 h-3.5 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
         </button>
 
-        {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
+        {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
         
-        <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
-        <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-texto/30 via-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
+        <div className="absolute inset-x-0 bottom-0 h-[50%] md:h-[35%] pointer-events-none z-10 bg-gradient-to-t from-black/80 md:from-texto/30 via-black/40 md:via-card/20 to-transparent opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-        <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
-          <span className="text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-texto-sec drop-shadow-sm">{product.get("category")}</span>
-          <h3 className="font-serif italic text-2xl sm:text-3xl text-texto line-clamp-1 drop-shadow-sm">{product.get("name")}</h3>
-          <div className="flex items-center gap-2 mt-1 pointer-events-auto drop-shadow-sm">
-            {promo.isActive ? (<><span className="text-xs md:text-sm line-through text-texto-sec pr-1">R$ {product.get("price").toFixed(2)}</span><span className="font-bold text-texto text-xl sm:text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-texto text-xl sm:text-2xl">R$ {product.get("price").toFixed(2)}</span>)}
+        <div className="absolute inset-x-0 bottom-0 p-4 md:p-8 flex flex-col gap-1 md:gap-2 z-20 opacity-100 translate-y-0 md:opacity-0 md:translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
+          <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-white/80 md:text-texto-sec drop-shadow-md md:drop-shadow-sm">{product.get("category")}</span>
+          <h3 className="font-serif italic text-lg sm:text-2xl md:text-3xl text-white md:text-texto line-clamp-1 drop-shadow-md">{product.get("name")}</h3>
+          <div className="flex items-center gap-1.5 md:gap-2 mt-0.5 md:mt-1 pointer-events-auto drop-shadow-md md:drop-shadow-sm">
+            {promo.isActive ? (<><span className="text-[10px] md:text-sm line-through text-white/60 md:text-texto-sec pr-1">R$ {product.get("price").toFixed(2)}</span><span className="font-bold text-white md:text-texto text-base sm:text-xl md:text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-white md:text-texto text-base sm:text-xl md:text-2xl">R$ {product.get("price").toFixed(2)}</span>)}
           </div>
-          <button onClick={(e) => onAddToCart(product, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-12 md:h-14 text-sm md:text-base bg-texto text-card font-bold rounded-xl md:rounded-2xl flex items-center justify-center hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 gap-2 shadow-lg">
-            {isOutOfStock ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Plus className="w-5 h-5 md:w-6 md:h-6" />}
-            {isOutOfStock ? "Esgotado" : "Adicionar à sacola"}
+          <button onClick={(e) => onAddToCart(product, e)} disabled={isOutOfStock} className="pointer-events-auto mt-2 md:mt-4 w-full h-10 md:h-14 text-xs md:text-base bg-white md:bg-texto text-black md:text-card font-bold rounded-lg md:rounded-2xl flex items-center justify-center hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 gap-1.5 md:gap-2 shadow-lg">
+            {isOutOfStock ? <X className="w-4 h-4 md:w-6 md:h-6" /> : <Plus className="w-4 h-4 md:w-6 md:h-6" />}
+            {isOutOfStock ? "Esgotado" : "Adicionar"}
           </button>
         </div>
       </div>
@@ -78,46 +77,46 @@ const PromoBannerCard = React.memo(({ product, isFav, promo, onOpenDetails, onTo
   const hasDetails = product.get("hasDetails");
 
   return (
-    <div className="relative shrink-0 w-[80vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-[340px] snap-center pb-4 pt-4">
-      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group/card relative aspect-[3/4] w-full overflow-hidden rounded-[24px] md:rounded-[32px] bg-black transition-all duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer hover:shadow-white/5' : ''}`}>
+    <div className="relative shrink-0 w-[70vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-[340px] snap-center pb-4 pt-4">
+      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group/card relative aspect-[3/4] w-full overflow-hidden rounded-[20px] md:rounded-[32px] bg-black transition-all duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer hover:shadow-white/5' : ''}`}>
         <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         
-        <div className="absolute top-4 left-4 md:top-5 md:left-5 flex flex-col gap-2 z-30 pointer-events-none">
+        <div className="absolute top-3 left-3 md:top-5 md:left-5 flex flex-col gap-2 z-30 pointer-events-none">
           {!isOutOfStock && (
-            <div className="bg-black/80 backdrop-blur-md text-white text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1.5 whitespace-nowrap">
+            <div className="bg-black/80 backdrop-blur-md text-white text-[9px] md:text-xs font-bold px-2.5 py-1 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1.5 whitespace-nowrap">
               <Timer className="w-3 h-3 md:w-4 md:h-4" />
               <PromoTimer endsAt={promo.endsAt} />
             </div>
           )}
         </div>
 
-        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-4 right-4 md:top-5 md:right-5 p-2.5 md:p-3 bg-white/30 backdrop-blur-lg rounded-full text-texto hover:bg-white/50 transition-colors duration-300 z-30 shadow-sm border border-white/10">
-          <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-3 right-3 md:top-5 md:right-5 p-2 md:p-3 bg-white/30 backdrop-blur-lg rounded-full text-texto hover:bg-white/50 transition-colors duration-300 z-30 shadow-sm border border-white/10">
+          <Heart className="w-3.5 h-3.5 md:w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
         </button>
 
-        {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
+        {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
 
-        <div className="absolute inset-x-0 bottom-0 h-[70%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 rounded-[24px] md:rounded-[32px]" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
-        <div className="absolute inset-x-0 bottom-0 h-[45%] pointer-events-none z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 rounded-[24px] md:rounded-[32px]" />
+        <div className="absolute inset-x-0 bottom-0 h-[70%] pointer-events-none z-10 backdrop-blur-sm opacity-100 md:opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
+        <div className="absolute inset-x-0 bottom-0 h-[50%] pointer-events-none z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-100 md:opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
 
-        <div className="absolute inset-x-0 bottom-0 p-6 md:p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover/card:translate-y-0 group-hover/card:opacity-100 transition-all duration-500 pointer-events-none rounded-[24px] md:rounded-[32px]">
-          <span className="text-[10px] md:text-[10px] font-bold uppercase tracking-widest text-white/70 drop-shadow-sm">{product.get("category")}</span>
-          <h3 className="font-serif italic text-2xl sm:text-3xl text-white line-clamp-1 drop-shadow-sm">{product.get("name")}</h3>
+        <div className="absolute inset-x-0 bottom-0 p-4 md:p-8 flex flex-col gap-1 md:gap-2 z-20 opacity-100 translate-y-0 md:opacity-0 md:translate-y-6 group-hover/card:translate-y-0 group-hover/card:opacity-100 transition-all duration-500 pointer-events-none">
+          <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-white/70 drop-shadow-sm">{product.get("category")}</span>
+          <h3 className="font-serif italic text-lg sm:text-2xl md:text-3xl text-white line-clamp-1 drop-shadow-md">{product.get("name")}</h3>
           
-          <div className="flex items-center gap-2 mt-1 pointer-events-auto drop-shadow-sm">
+          <div className="flex items-center gap-1.5 md:gap-2 mt-0.5 md:mt-1 pointer-events-auto drop-shadow-sm">
             {promo.isActive ? (
               <>
-                <span className="text-xs md:text-sm line-through text-white/60 pr-1">R$ {product.get("price").toFixed(2)}</span>
-                <span className="font-bold text-white text-xl sm:text-2xl">R$ {promo.price.toFixed(2)}</span>
+                <span className="text-[10px] md:text-sm line-through text-white/60 pr-1">R$ {product.get("price").toFixed(2)}</span>
+                <span className="font-bold text-white text-base sm:text-xl md:text-2xl">R$ {promo.price.toFixed(2)}</span>
               </>
             ) : (
-              <span className="font-bold text-white text-xl sm:text-2xl">R$ {product.get("price").toFixed(2)}</span>
+              <span className="font-bold text-white text-base sm:text-xl md:text-2xl">R$ {product.get("price").toFixed(2)}</span>
             )}
           </div>
           
-          <button onClick={(e) => onAddToCart(product, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-12 md:h-14 text-sm md:text-base bg-white text-black font-bold rounded-xl md:rounded-2xl flex items-center justify-center hover:bg-neutral-200 transition-colors duration-300 disabled:opacity-50 gap-2 shadow-lg">
-            {isOutOfStock ? <X className="w-5 h-5 md:w-6 md:h-6" /> : <Plus className="w-5 h-5 md:w-6 md:h-6" />}
-            {isOutOfStock ? "Esgotado" : "Adicionar à sacola"}
+          <button onClick={(e) => onAddToCart(product, e)} disabled={isOutOfStock} className="pointer-events-auto mt-2 md:mt-4 w-full h-10 md:h-14 text-xs md:text-base bg-white text-black font-bold rounded-lg md:rounded-2xl flex items-center justify-center hover:bg-neutral-200 transition-colors duration-300 disabled:opacity-50 gap-1.5 md:gap-2 shadow-lg">
+            {isOutOfStock ? <X className="w-4 h-4 md:w-6 md:h-6" /> : <Plus className="w-4 h-4 md:w-6 md:h-6" />}
+            {isOutOfStock ? "Esgotado" : "Adicionar"}
           </button>
         </div>
       </div>
@@ -132,57 +131,57 @@ const CatalogProductCard = React.memo(({ product, isFav, promo, onOpenDetails, o
   const hasDetails = product.get("hasDetails");
   
   return (
-    <div className="group relative flex flex-row min-[400px]:flex-col h-full bg-card min-[400px]:bg-transparent rounded-2xl min-[400px]:rounded-none p-3 min-[400px]:p-0 border border-borda min-[400px]:border-transparent shadow-sm min-[400px]:shadow-none gap-4 min-[400px]:gap-0">
+    <div className="group relative flex flex-row min-[400px]:flex-col h-full bg-card min-[400px]:bg-transparent rounded-2xl min-[400px]:rounded-none p-3 min-[400px]:p-0 border border-borda min-[400px]:border-transparent shadow-sm min-[400px]:shadow-none gap-3 md:gap-4 min-[400px]:gap-0">
       
-      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-[110px] min-[400px]:w-full shrink-0 aspect-[4/5] overflow-hidden rounded-xl min-[400px]:rounded-[20px] md:rounded-[24px] bg-card min-[400px]:mb-3 md:mb-4 relative border border-transparent hover:border-borda transition-colors ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-[90px] min-[400px]:w-full shrink-0 aspect-[4/5] overflow-hidden rounded-xl min-[400px]:rounded-[16px] md:rounded-[24px] bg-card min-[400px]:mb-3 md:mb-4 relative border border-transparent hover:border-borda transition-colors ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
         <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />
         
-        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-2 right-2 min-[400px]:top-3 min-[400px]:right-3 md:top-4 md:right-4 p-1.5 min-[400px]:p-2.5 bg-card/30 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
-          <Heart className="w-3 h-3 min-[400px]:w-4 min-[400px]:h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-2 right-2 md:top-4 md:right-4 p-1.5 md:p-2.5 bg-card/40 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
+          <Heart className="w-3.5 h-3.5 md:w-4 md:h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
         </button>
 
-        {isOutOfStock && <div className="absolute top-2 left-2 min-[400px]:top-3 min-[400px]:left-3 md:top-4 md:left-4 bg-card/90 backdrop-blur-sm text-texto text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-3 md:py-1.5 rounded-full uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
+        {isOutOfStock && <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-card/90 backdrop-blur-sm text-texto text-[8px] md:text-[10px] font-bold px-1.5 py-0.5 md:px-3 md:py-1.5 rounded-md uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
         
         {hasDetails && !isOutOfStock && !promo.isActive && (
-          <div className="absolute top-2 left-2 min-[400px]:top-3 min-[400px]:left-3 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[9px] md:text-[10px] font-bold px-2 py-1 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-100 min-[400px]:opacity-0 min-[400px]:group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-            <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> <span className="hidden min-[400px]:inline">Premium</span>
+          <div className="absolute top-2 left-2 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[8px] md:text-[10px] font-bold px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-100 min-[400px]:opacity-0 min-[400px]:group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+            <Sparkles className="w-2.5 h-2.5 md:w-3 md:h-3 text-amber-500 fill-amber-500" /> <span className="hidden min-[400px]:inline">Premium</span>
           </div>
         )}
         
         {!isOutOfStock && (
           <div className="hidden sm:block absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4 translate-y-[120%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-auto">
             <button onClick={(e) => onAddToCart(product, e)} className="w-full bg-btn text-btn-texto font-bold py-3 md:py-4 text-sm md:text-base rounded-xl shadow-lg hover:opacity-90 transition-opacity duration-300 flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4 md:w-5 md:h-5" /> Adicionar à sacola
+              <Plus className="w-4 h-4 md:w-5 md:h-5" /> Adicionar
             </button>
           </div>
         )}
       </div>
       
-      <div className="flex flex-col flex-1 py-1 min-[400px]:py-0 justify-between">
+      <div className="flex flex-col flex-1 py-0.5 min-[400px]:py-0 justify-between">
         <div>
-          <h3 className="font-medium text-sm md:text-base text-texto line-clamp-2 mb-1 min-[400px]:mb-0 leading-tight">{product.get("name")}</h3>
-          {variants.length > 0 && <span className="text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 py-0.5 rounded-md inline-block min-[400px]:hidden mb-1">{variants.length} Cores</span>}
+          <h3 className="font-medium text-xs sm:text-sm md:text-base text-texto line-clamp-2 mb-1 min-[400px]:mb-0 leading-tight">{product.get("name")}</h3>
+          {variants.length > 0 && <span className="text-[8px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 py-0.5 rounded-md inline-block min-[400px]:hidden mb-1">{variants.length} Cores</span>}
         </div>
         
         <div className="flex flex-col min-[400px]:flex-row min-[400px]:justify-between min-[400px]:items-end mt-auto min-[400px]:mt-1">
           {promo.isActive ? (
             <div className="flex flex-col">
-              <span className="text-[10px] md:text-xs line-through text-texto-sec">R$ {product.get("price").toFixed(2)}</span>
-              <span className="text-texto font-bold text-base">R$ {promo.price.toFixed(2)}</span>
+              <span className="text-[9px] md:text-xs line-through text-texto-sec">R$ {product.get("price").toFixed(2)}</span>
+              <span className="text-texto font-bold text-sm md:text-base">R$ {promo.price.toFixed(2)}</span>
             </div>
           ) : (
-            <p className="text-texto-sec text-sm md:text-base font-bold min-[400px]:font-normal text-texto min-[400px]:text-texto-sec">R$ {product.get("price").toFixed(2)}</p>
+            <p className="text-texto-sec text-xs sm:text-sm md:text-base font-bold min-[400px]:font-normal text-texto min-[400px]:text-texto-sec">R$ {product.get("price").toFixed(2)}</p>
           )}
-          {variants.length > 0 && <span className="hidden min-[400px]:inline-block text-[9px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 md:px-2 py-0.5 rounded-md shrink-0">{variants.length} Cores</span>}
+          {variants.length > 0 && <span className="hidden min-[400px]:inline-block text-[8px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 md:px-2 py-0.5 rounded-md shrink-0">{variants.length} Cores</span>}
         </div>
 
         {!isOutOfStock ? (
-          <button onClick={(e) => onAddToCart(product, e)} className="sm:hidden mt-3 w-full bg-texto text-card font-bold py-2.5 text-xs rounded-xl flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
-            <Plus className="w-3.5 h-3.5" /> Adicionar
+          <button onClick={(e) => onAddToCart(product, e)} className="sm:hidden mt-2 w-full bg-texto text-card font-bold py-2 text-[10px] rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform shadow-sm">
+            <Plus className="w-3 h-3" /> Adicionar
           </button>
         ) : (
-          <div className="sm:hidden mt-3 w-full bg-fundo text-texto-sec font-bold py-2.5 text-xs rounded-xl flex items-center justify-center border border-borda">
+          <div className="sm:hidden mt-2 w-full bg-fundo text-texto-sec font-bold py-2 text-[10px] rounded-lg flex items-center justify-center border border-borda">
             Esgotado
           </div>
         )}
@@ -217,8 +216,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "" }); 
   const [pixData, setPixData] = useState(null); 
-  
-  // 👇 ESTADO PARA SALVAR O TEXTO DO WPP 👇
   const [lastOrderWhatsAppText, setLastOrderWhatsAppText] = useState("");
 
   const [currentView, setCurrentView] = useState("store"); 
@@ -308,7 +305,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
   const scrollPromo = useCallback((direction) => {
     if (promoScrollRef.current) {
-      const scrollAmount = 340; 
+      const scrollAmount = window.innerWidth > 768 ? 340 : 250; 
       promoScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
     }
   }, []);
@@ -316,8 +313,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const scrollToSection = useCallback((sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      // O respiro mágico para não esconder o título
-      const headerOffset = 140; 
+      const headerOffset = window.innerWidth > 768 ? 140 : 80; 
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
       window.scrollTo({ top: offsetPosition, behavior: "smooth" });
@@ -607,7 +603,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
       await Parse.Object.saveAll(productsToUpdate);
 
-      // 👇 NOVA LÓGICA DO WHATSAPP AQUI 👇
       let wppText = `${activeUser?.get("name") ? `Olá, me chamo ${activeUser.get("name")}!` : "Olá!"} Acabei de fazer um pedido na loja (Pedido #${order.id.slice(-6).toUpperCase()}).\n\n*Resumo da Compra:*\n`;
       cart.forEach(item => {
         const promo = getActivePromo(item.product);
@@ -617,7 +612,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       wppText += `\n*Pagamento:* ${paymentMethod === "pix" ? "PIX" : "Pagamento na Entrega"}`;
       
       setLastOrderWhatsAppText(wppText);
-      // 👆 FIM DA LÓGICA DO WHATSAPP 👆
 
       setCart([]); localStorage.removeItem("florESol_cart"); setCheckoutStep("success"); 
       fetchProducts(); if (profileTab === "orders") fetchOrders();
@@ -631,7 +625,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     setTimeout(() => { setCheckoutStep("cart"); setLastOrderId(null); setPixData(null); }, 400); 
   };
 
-  // 👇 LÓGICA DE REDIRECIONAMENTO ATUALIZADA 👇
   const handleWhatsAppRedirect = () => {
     const telefone = "5585999113659";
     const texto = lastOrderWhatsAppText || "Olá! Acabei de fazer um pedido na loja.";
@@ -646,23 +639,20 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const tabVariants = { hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }, exit: { opacity: 0, y: -10, transition: { duration: 0.3, ease: "easeIn" } } };
 
   // ============================================================================
-  // DADOS DOS BANNERS (Variáveis Diretas do storeSettings para melhor performance)
+  // DADOS DOS BANNERS 
   // ============================================================================
   const bannersArray = storeSettings?.get("banners") || [{ imageUrl: storeSettings?.get("bannerImageUrl") || "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop", tag: storeSettings?.get("bannerTag") || "Novidades", title: storeSettings?.get("bannerTitle") || "Coleção Essência", desc: storeSettings?.get("bannerDesc") || "Descubra o frescor.", btn: storeSettings?.get("bannerBtn") || "Descobrir Agora", target: storeSettings?.get("bannerTarget") || "lancamentos" }];
   
-  // Banner 2 (O Secundário de Informações)
   const infoBannerActive = storeSettings ? storeSettings.get("infoBannerActive") !== false : true;
   const infoBannerTitle = storeSettings?.get("infoBannerTitle") !== undefined ? storeSettings.get("infoBannerTitle") : "Coleção de Outono";
   const infoBannerDesc = storeSettings?.get("infoBannerDesc") !== undefined ? storeSettings.get("infoBannerDesc") : "Não perca nossa coleção exclusiva por tempo limitado.";
   const infoBannerBtn = storeSettings?.get("infoBannerBtn") !== undefined ? storeSettings.get("infoBannerBtn") : "Explorar";
   const infoBannerImageUrl = storeSettings?.get("infoBannerImageUrl") || "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop";
 
-  // Banner de Promoção
   const promoBannerTitle = storeSettings?.get("promoBannerTitle") || "Ofertas Especiais";
   const promoBannerDesc = storeSettings?.get("promoBannerDesc") || "Uma seleção exclusiva de peças com condições únicas. Não deixe para depois.";
   const promoBannerImageUrl = storeSettings?.get("promoBannerImageUrl") || "";
 
-  // Banner Terciário
   const thirdBannerActive = storeSettings ? storeSettings.get("thirdBannerActive") !== false : true;
   const thirdBannerTitle = storeSettings?.get("thirdBannerTitle") || "";
   const thirdBannerDesc = storeSettings?.get("thirdBannerDesc") || "";
@@ -691,23 +681,30 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   return (
     <div className="min-h-screen bg-fundo transition-colors duration-500 font-sans relative flex flex-col text-texto">
       
-      <header className="bg-fundo backdrop-blur-md transition-colors duration-500 sticky top-0 z-50">
-        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-16 md:h-20 flex items-center justify-between gap-3 md:gap-4">
+      {/* ==============================================================================
+          👇 CABEÇALHO OTIMIZADO PARA MOBILE E DESKTOP 👇
+          ============================================================================== */}
+      <header className="bg-fundo/95 backdrop-blur-md transition-colors duration-500 sticky top-0 z-50 border-b border-borda md:border-none">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-14 md:h-20 flex items-center justify-between gap-3 md:gap-4 relative">
           
-          <div className="flex-1 flex justify-start">
+          {/* Logo Centralizada no Mobile */}
+          <div className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:flex-1 md:flex md:justify-start z-20">
             <button 
               onClick={() => { 
                 setDetailedProduct(null); 
-                window.innerWidth < 768 ? setIsMobileMenuOpen(true) : setCurrentView("store"); 
+                setCurrentView("store"); 
+                window.scrollTo(0,0);
               }} 
-              className="text-2xl md:text-3xl font-serif italic tracking-wide text-texto hover:opacity-70 transition-opacity truncate"
+              className="text-xl md:text-3xl font-serif italic tracking-wide text-texto hover:opacity-70 transition-opacity truncate"
             >
               Flor e Sol
             </button>
           </div>
           
+          <div className="flex-1 md:hidden"></div> {/* Espaçador mobile */}
+          
           {currentView === "store" && (
-            <div className="flex-[2] flex justify-center items-center">
+            <div className="hidden md:flex flex-[2] justify-center items-center">
               <motion.div initial={false} animate={{ width: isSearchExpanded ? "100%" : "44px", maxWidth: isSearchExpanded ? "600px" : "44px" }} transition={{ type: "spring", bounce: 0, duration: 0.6 }} className={`relative flex items-center h-10 md:h-11 rounded-full overflow-hidden transition-colors duration-300 ${isSearchExpanded ? 'bg-texto text-card shadow-md' : 'bg-transparent hover:bg-texto/5'}`}>
                 <button onClick={() => setIsSearchExpanded(true)} className={`absolute left-0 z-10 w-10 md:w-11 h-10 md:h-11 flex items-center justify-center transition-colors duration-300 ${isSearchExpanded ? 'text-card cursor-default pointer-events-none' : 'text-texto'}`}><Search className="w-4 h-4 md:w-5 md:h-5" /></button>
                 <input type="text" placeholder="O que você está procurando?" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full h-full bg-transparent border-none py-2 pl-10 md:pl-12 pr-10 md:pr-12 focus:outline-none text-sm md:text-base transition-opacity duration-300 ${isSearchExpanded ? 'opacity-100 text-card placeholder:text-card/70' : 'opacity-0 cursor-pointer'}`} style={{ pointerEvents: isSearchExpanded ? 'auto' : 'none' }} />
@@ -718,119 +715,127 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
             </div>
           )}
 
-          <div className="flex-1 flex justify-end items-center gap-1 md:gap-2 text-texto-sec">
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-full text-texto-sec hover:text-texto hover:bg-texto/5 transition-colors hidden sm:block">
+          <div className="flex-1 flex justify-end items-center gap-2 md:gap-4 text-texto-sec relative z-20">
+            {/* Escondido no Mobile, Fica dentro do Perfil agora */}
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full text-texto-sec hover:text-texto hover:bg-texto/5 transition-colors hidden md:block">
               {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
 
-            <button onClick={() => setCurrentView("cart")} className={`p-2.5 rounded-full transition-colors relative ${currentView === "cart" ? "bg-texto text-card" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}>
-              <ShoppingBag className="w-5 h-5" />
-              {cartItemsCount > 0 && (<span className={`absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 ${currentView === "cart" ? "bg-card border-texto" : "bg-texto border-fundo"}`} />)}
-            </button>
-            
-            <div 
-              className="relative hidden md:block ml-1"
-              onMouseEnter={() => activeUser && setIsUserMenuOpen(true)}
-              onMouseLeave={() => setIsUserMenuOpen(false)}
-            >
-              <button 
-                onClick={() => activeUser ? setIsUserMenuOpen(!isUserMenuOpen) : onRequireLogin()} 
-                className={`flex items-center gap-2 px-3 py-2.5 rounded-full transition-colors ${currentView === "profile" ? "bg-texto text-card shadow-sm" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}
-              >
-                {userAvatar ? (
-                  <img src={userAvatar} alt="Perfil" className={`w-7 h-7 rounded-full object-cover border ${currentView === "profile" ? "border-card/30" : "border-borda"}`} />
-                ) : (
-                  <User className="w-5 h-5" />
-                )}
-                <span className="text-sm font-medium truncate max-w-[150px]">
-                  {activeUser?.get("name") ? `Olá, ${activeUser.get("name").split(" ")[0]}` : "Entrar"}
-                </span>
+            {/* Ícones Exclusivos do Desktop */}
+            <div className="hidden md:flex items-center gap-2">
+              <button onClick={() => setCurrentView("cart")} className={`p-2.5 rounded-full transition-colors relative ${currentView === "cart" ? "bg-texto text-card" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}>
+                <ShoppingBag className="w-5 h-5" />
+                {cartItemsCount > 0 && (<span className={`absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 ${currentView === "cart" ? "bg-card border-texto" : "bg-texto border-fundo"}`} />)}
               </button>
+              
+              <div 
+                className="relative ml-1"
+                onMouseEnter={() => activeUser && setIsUserMenuOpen(true)}
+                onMouseLeave={() => setIsUserMenuOpen(false)}
+              >
+                <button 
+                  onClick={() => activeUser ? setIsUserMenuOpen(!isUserMenuOpen) : onRequireLogin()} 
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-full transition-colors ${currentView === "profile" ? "bg-texto text-card shadow-sm" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}
+                >
+                  {userAvatar ? (
+                    <img src={userAvatar} alt="Perfil" className={`w-7 h-7 rounded-full object-cover border ${currentView === "profile" ? "border-card/30" : "border-borda"}`} />
+                  ) : (
+                    <User className="w-5 h-5" />
+                  )}
+                  <span className="text-sm font-medium truncate max-w-[150px]">
+                    {activeUser?.get("name") ? `Olá, ${activeUser.get("name").split(" ")[0]}` : "Entrar"}
+                  </span>
+                </button>
 
-              <AnimatePresence>
-                {isUserMenuOpen && activeUser && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: -15 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2, ease: "easeOut" }}
-                    className="absolute right-0 top-full pt-2 w-56 z-50"
-                  >
-                    <div className="bg-card rounded-2xl shadow-xl border border-borda overflow-hidden py-2">
-                      <div className="px-4 py-3 border-b border-borda mb-2 flex items-center gap-3">
-                        {userAvatar ? <img src={userAvatar} alt="Perfil" className="w-10 h-10 rounded-full object-cover border border-borda" /> : <div className="w-10 h-10 rounded-full bg-fundo flex items-center justify-center text-texto-sec"><User className="w-5 h-5" /></div>}
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-texto truncate">{activeUser.get("name") || "Bem-vindo!"}</p>
-                          <p className="text-xs text-texto-sec truncate">{activeUser.get("email")}</p>
+                <AnimatePresence>
+                  {isUserMenuOpen && activeUser && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: -15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="absolute right-0 top-full pt-2 w-56 z-50"
+                    >
+                      <div className="bg-card rounded-2xl shadow-xl border border-borda overflow-hidden py-2">
+                        <div className="px-4 py-3 border-b border-borda mb-2 flex items-center gap-3">
+                          {userAvatar ? <img src={userAvatar} alt="Perfil" className="w-10 h-10 rounded-full object-cover border border-borda" /> : <div className="w-10 h-10 rounded-full bg-fundo flex items-center justify-center text-texto-sec"><User className="w-5 h-5" /></div>}
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-texto truncate">{activeUser.get("name") || "Bem-vindo!"}</p>
+                            <p className="text-xs text-texto-sec truncate">{activeUser.get("email")}</p>
+                          </div>
                         </div>
+                        <button onClick={() => { setCurrentView("profile"); setProfileTab("data"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Settings className="w-4 h-4" /> Meus Dados</button>
+                        <button onClick={() => { setCurrentView("profile"); setProfileTab("orders"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Package className="w-4 h-4" /> Meus Pedidos</button>
+                        <button onClick={() => { setCurrentView("profile"); setProfileTab("favorites"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Heart className="w-4 h-4" /> Meus Favoritos</button>
+                        <div className="h-px bg-borda my-2"></div>
+                        <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-colors"><LogOut className="w-4 h-4" /> Sair da Conta</button>
                       </div>
-                      <button onClick={() => { setCurrentView("profile"); setProfileTab("data"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Settings className="w-4 h-4" /> Meus Dados</button>
-                      <button onClick={() => { setCurrentView("profile"); setProfileTab("orders"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Package className="w-4 h-4" /> Meus Pedidos</button>
-                      <button onClick={() => { setCurrentView("profile"); setProfileTab("favorites"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Heart className="w-4 h-4" /> Meus Favoritos</button>
-                      <div className="h-px bg-borda my-2"></div>
-                      <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-colors"><LogOut className="w-4 h-4" /> Sair da Conta</button>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>
-      </header>
 
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }} className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
-            <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", bounce: 0, duration: 0.5 }} className="fixed top-0 right-0 h-full w-[85%] max-w-sm bg-card shadow-2xl z-50 flex flex-col md:hidden">
-              <div className="flex items-center justify-between p-5 border-b border-borda">
-                <h2 className="text-xl font-serif italic text-texto">Flor e Sol</h2>
-                <button onClick={() => setIsMobileMenuOpen(false)} className="p-2 hover:bg-fundo rounded-full transition text-texto-sec hover:text-texto"><X className="w-4 h-4" /></button>
-              </div>
-              <div className="flex-1 overflow-y-auto p-5 flex flex-col gap-6">
-                
-                <div className="bg-fundo p-4 rounded-xl border border-borda flex items-center gap-3">
-                  {userAvatar ? <img src={userAvatar} alt="Perfil" className="w-12 h-12 rounded-full object-cover border border-borda" /> : <div className="w-12 h-12 rounded-full bg-card flex items-center justify-center text-texto-sec"><User className="w-6 h-6" /></div>}
-                  <div className="min-w-0">
-                    {activeUser ? (
-                      <>
-                        <p className="text-[10px] text-texto-sec uppercase tracking-wider mb-0.5">Olá,</p>
-                        <p className="font-bold text-texto truncate text-base">{activeUser.get("name") || activeUser.get("email")}</p>
-                      </>
-                    ) : (
-                      <button onClick={() => { setIsMobileMenuOpen(false); onRequireLogin(); }} className="text-left">
-                        <p className="font-bold text-texto text-base">Fazer Login</p>
-                        <p className="text-xs text-texto-sec">ou Cadastre-se</p>
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <nav className="flex flex-col gap-1.5">
-                  <button onClick={() => { setCurrentView("store"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "store" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><ShoppingBag className="w-5 h-5" /> Vitrine da Loja</button>
-                  <button onClick={() => { setCurrentView("cart"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "cart" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><ShoppingBag className="w-5 h-5" /> Meu Carrinho</button>
-                  <button onClick={() => { if(!activeUser){ onRequireLogin(); setIsMobileMenuOpen(false); return;} setCurrentView("profile"); setProfileTab("data"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "profile" && profileTab === "data" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><Settings className="w-5 h-5" /> Meus Dados</button>
-                  <button onClick={() => { if(!activeUser){ onRequireLogin(); setIsMobileMenuOpen(false); return;} setCurrentView("profile"); setProfileTab("orders"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "profile" && profileTab === "orders" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><Package className="w-5 h-5" /> Meus Pedidos</button>
-                  <button onClick={() => { if(!activeUser){ onRequireLogin(); setIsMobileMenuOpen(false); return;} setCurrentView("profile"); setProfileTab("favorites"); setIsMobileMenuOpen(false); }} className={`w-full text-left px-4 py-3.5 rounded-xl text-sm font-bold transition-colors flex items-center gap-3 ${currentView === "profile" && profileTab === "favorites" ? "bg-texto text-card" : "text-texto-sec hover:bg-fundo hover:text-texto"}`}><Heart className="w-5 h-5" /> Meus Favoritos</button>
-                </nav>
-                
-                <div className="mt-auto pt-5 border-t border-borda flex items-center justify-between">
-                  {activeUser ? (
-                    <button onClick={onLogout} className="text-left px-4 py-3 rounded-xl text-sm font-medium text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-3"><LogOut className="w-5 h-5" /> Sair</button>
-                  ) : (
-                    <div></div>
-                  )}
-                  <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-fundo rounded-xl text-texto-sec hover:text-texto transition-colors">
-                    {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-                  </button>
-                </div>
+        {/* Barra de Busca Expansível Exclusiva do Mobile */}
+        <AnimatePresence>
+          {isSearchExpanded && currentView === "store" && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="md:hidden w-full bg-fundo border-b border-borda px-4 py-3 shadow-sm"
+            >
+              <div className="relative flex items-center bg-card rounded-full h-11 px-3 border border-borda">
+                <Search className="w-4 h-4 text-texto-sec" />
+                <input 
+                  type="text" 
+                  autoFocus
+                  value={searchQuery} 
+                  onChange={(e) => setSearchQuery(e.target.value)} 
+                  placeholder="Buscar produtos..." 
+                  className="flex-1 bg-transparent border-none outline-none text-sm px-3 text-texto" 
+                />
+                {searchQuery && <button onClick={() => setSearchQuery('')}><X className="w-4 h-4 text-texto-sec"/></button>}
               </div>
             </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </header>
 
+      {/* ==============================================================================
+          👇 NAVIGATION BAR INFERIOR MÓVEL TIPO APP 👇
+          ============================================================================== */}
+      {!detailedProduct && (
+        <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-fundo/95 backdrop-blur-xl border border-borda rounded-2xl z-[100] flex justify-around items-center h-16 px-2 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+          <button onClick={() => {setCurrentView('store'); setIsSearchExpanded(false); window.scrollTo(0,0);}} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${currentView === 'store' && !isSearchExpanded ? 'text-texto scale-110' : 'text-texto-sec hover:text-texto'} transition-all`}>
+            <Home className="w-5 h-5" />
+            <span className="text-[9px] font-bold tracking-wide">Início</span>
+          </button>
+          <button onClick={() => {setCurrentView('store'); setIsSearchExpanded(true); window.scrollTo(0,0);}} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${isSearchExpanded ? 'text-texto scale-110' : 'text-texto-sec hover:text-texto'} transition-all`}>
+            <Search className="w-5 h-5" />
+            <span className="text-[9px] font-bold tracking-wide">Busca</span>
+          </button>
+          <button onClick={() => setCurrentView('cart')} className={`flex flex-col items-center justify-center w-full h-full space-y-1 relative ${currentView === 'cart' ? 'text-texto scale-110' : 'text-texto-sec hover:text-texto'} transition-all`}>
+            <div className="relative">
+              <ShoppingBag className="w-5 h-5" />
+              {cartItemsCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-texto text-card text-[9px] font-bold rounded-full flex items-center justify-center">{cartItemsCount}</span>}
+            </div>
+            <span className="text-[9px] font-bold tracking-wide">Sacola</span>
+          </button>
+          <button onClick={() => activeUser ? setCurrentView('profile') : onRequireLogin()} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${currentView === 'profile' ? 'text-texto scale-110' : 'text-texto-sec hover:text-texto'} transition-all`}>
+            {userAvatar && currentView === 'profile' ? (
+              <img src={userAvatar} alt="Perfil" className="w-5 h-5 rounded-full object-cover border border-borda" />
+            ) : (
+              <User className="w-5 h-5" />
+            )}
+            <span className="text-[9px] font-bold tracking-wide">Perfil</span>
+          </button>
+        </nav>
+      )}
+
+      {/* CONTEÚDO PRINCIPAL DA LOJA */}
       <div className="flex-grow relative">
         <AnimatePresence mode="wait">
           
@@ -841,7 +846,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 mt-6 md:mt-0 space-y-12 md:space-y-16 mb-20"
+              className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 mt-4 md:mt-0 space-y-8 md:space-y-16 mb-24 md:mb-20"
             >
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -862,9 +867,9 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               ) : (
                 <>
                   {searchQuery ? (
-                    <section>
+                    <section className="pt-4">
                       <h2 className="text-xl md:text-2xl font-medium mb-6 text-texto">Resultados para "{searchQuery}"</h2>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-4 md:gap-8">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-8">
                         {searchResults.map(p => (
                           <StandardProductCard key={p.id} product={p} config={{}} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                         ))}
@@ -874,7 +879,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                   ) : (
                     <>
                       {/* SESSÃO BANNER PRINCIPAL */}
-                      <section className="relative w-full h-[25vh] min-h-[220px] sm:h-[55vh] md:h-[70vh] lg:h-[85vh] rounded-[20px] md:rounded-[32px] overflow-hidden shadow-sm bg-fundo mt-3 sm:mt-0">
+                      <section className="relative w-full h-[35vh] min-h-[220px] sm:h-[55vh] md:h-[70vh] lg:h-[85vh] rounded-[20px] md:rounded-[32px] overflow-hidden shadow-sm bg-fundo mt-3 sm:mt-0">
                         <AnimatePresence initial={false}>
                           <motion.div 
                             key={bannersArray.length > 1 ? currentBannerIndex : "static-banner"}
@@ -916,14 +921,14 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
                       {/* SESSÃO LANÇAMENTOS */}
                       {newArrivals.length > 0 && (
-                        <section id="lancamentos" className="mt-12 md:mt-16 pt-4">
+                        <section id="lancamentos" className="mt-8 md:mt-16 pt-4">
                           <div className="flex items-center gap-3 mb-6 px-1 md:px-0">
                             <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-btn text-btn-texto flex items-center justify-center"><Sparkles className="w-3 h-3 md:w-4 md:h-4" /></div>
                             <h2 className="text-xl md:text-2xl font-medium text-texto">Lançamentos</h2>
                           </div>
-                          <div className="flex overflow-x-auto gap-4 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-8 md:pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-2 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                          <div className="flex overflow-x-auto gap-3 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-6 md:pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-2 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             {newArrivals.map(p => (
-                              <StandardProductCard key={p.id} product={p} config={{ tag: "Novo", wrapClass: "w-[80vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                              <StandardProductCard key={p.id} product={p} config={{ tag: "Novo", wrapClass: "w-[70vw] max-w-[240px] sm:max-w-[340px] md:w-full md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                             ))}
                           </div>
                         </section>
@@ -931,87 +936,87 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
                       {/* SESSÃO OFERTAS LIMITADAS */}
                       {promoProducts.length > 0 && (
-                        <section id="ofertas" className="mt-12 md:mt-24 relative w-full rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm group bg-texto">
+                        <section id="ofertas" className="mt-8 md:mt-24 relative w-full md:rounded-[32px] overflow-hidden md:shadow-sm group md:bg-texto">
                           
-                          {promoBannerImageUrl && (
-                            <>
-                              <img 
-                                src={promoBannerImageUrl} 
-                                alt={promoBannerTitle} 
-                                className="absolute inset-0 w-full h-full object-cover opacity-50 transition-transform duration-1000 group-hover:scale-105" 
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/20"></div>
-                            </>
-                          )}
-
-                          <div className="relative z-10 flex flex-col lg:flex-row items-center p-6 sm:p-10 md:p-16 gap-8 md:gap-12 h-full">
-                            
-                            <div className="w-full lg:w-1/3 flex flex-col justify-center text-left">
+                          {/* ==============================================================================
+                              👇 OFERTAS DESKTOP (Layout Original Luxuoso) 👇
+                              ============================================================================== */}
+                          <div className="hidden md:flex flex-col lg:flex-row items-center p-10 md:p-16 gap-12 h-full z-10 relative">
+                            {promoBannerImageUrl && (
+                              <>
+                                <img src={promoBannerImageUrl} alt={promoBannerTitle} className="absolute inset-0 w-full h-full object-cover opacity-50 transition-transform duration-1000 group-hover:scale-105" />
+                                <div className="absolute inset-0 bg-gradient-to-r from-black/95 via-black/70 to-black/20"></div>
+                              </>
+                            )}
+                            <div className="w-full lg:w-1/3 flex flex-col justify-center text-left relative z-10">
                               <div className="flex items-center gap-2 mb-4">
-                                <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center backdrop-blur-md border border-amber-500/30">
-                                  <Timer className="w-4 h-4" />
-                                </div>
-                                <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-amber-500">Tempo Limitado</span>
+                                <div className="w-8 h-8 rounded-full bg-amber-500/20 text-amber-500 flex items-center justify-center backdrop-blur-md border border-amber-500/30"><Timer className="w-4 h-4" /></div>
+                                <span className="text-xs font-bold uppercase tracking-widest text-amber-500">Tempo Limitado</span>
                               </div>
-                              <h2 className={`text-4xl sm:text-5xl md:text-6xl font-serif italic mb-4 drop-shadow-md leading-tight ${promoBannerImageUrl ? 'text-white' : 'text-card'}`}>{promoBannerTitle}</h2>
-                              <p className={`text-sm md:text-base max-w-sm mb-8 font-light ${promoBannerImageUrl ? 'text-white/80' : 'text-card/80'}`}>{promoBannerDesc}</p>
+                              <h2 className={`text-5xl md:text-6xl font-serif italic mb-4 drop-shadow-md leading-tight ${promoBannerImageUrl ? 'text-white' : 'text-card'}`}>{promoBannerTitle}</h2>
+                              <p className={`text-base max-w-sm mb-8 font-light ${promoBannerImageUrl ? 'text-white/80' : 'text-card/80'}`}>{promoBannerDesc}</p>
                             </div>
 
-                            <div className="w-full lg:w-2/3 relative group/slider">
-                              
+                            <div className="w-full lg:w-2/3 relative group/slider z-10">
                               {canScrollLeft && (
-                                <button 
-                                  onClick={() => scrollPromo('left')} 
-                                  className="hidden md:flex absolute left-0 lg:-left-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100"
-                                >
-                                  <ArrowLeft className="w-6 h-6" />
-                                </button>
+                                <button onClick={() => scrollPromo('left')} className="hidden md:flex absolute left-0 lg:-left-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100"><ArrowLeft className="w-6 h-6" /></button>
                               )}
-
-                              <div 
-                                ref={promoScrollRef} 
-                                onScroll={handlePromoScroll} 
-                                className="flex overflow-x-auto gap-4 md:gap-6 scroll-smooth scrollbar-hide py-10 px-4 -mx-4 md:px-8 md:-mx-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-                              >
-                                {promoProducts.map(p => (
-                                  <PromoBannerCard key={p.id} product={p} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
-                                ))}
+                              <div ref={promoScrollRef} onScroll={handlePromoScroll} className="flex overflow-x-auto gap-6 scroll-smooth scrollbar-hide py-10 px-8 -mx-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                                {promoProducts.map(p => (<PromoBannerCard key={p.id} product={p} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />))}
                               </div>
-
                               {canScrollRight && promoProducts.length > 1 && (
-                                <button 
-                                  onClick={() => scrollPromo('right')} 
-                                  className="hidden md:flex absolute right-0 lg:-right-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100 rotate-180"
-                                >
-                                  <ArrowLeft className="w-6 h-6" />
-                                </button>
+                                <button onClick={() => scrollPromo('right')} className="hidden md:flex absolute right-0 lg:-right-6 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white text-black hover:scale-110 hover:bg-neutral-200 transition-all duration-300 shadow-xl z-40 opacity-0 group-hover/slider:opacity-100 rotate-180"><ArrowLeft className="w-6 h-6" /></button>
                               )}
+                            </div>
+                          </div>
 
+                          {/* ==============================================================================
+                              👇 OFERTAS MOBILE OTIMIZADA (Idêntica ao grid de Produtos) 👇
+                              ============================================================================== */}
+                          <div className="md:hidden flex flex-col relative z-10">
+                            {/* Bannerzinho Escuro Acima do Grid */}
+                            <div className="relative w-full rounded-2xl overflow-hidden bg-texto p-6 mb-6 shadow-sm">
+                              {promoBannerImageUrl && <img className="absolute inset-0 w-full h-full object-cover opacity-50" src={promoBannerImageUrl} alt="Ofertas" />}
+                              <div className="absolute inset-0 bg-gradient-to-r from-black/95 to-black/40"></div>
+                              <div className="relative z-10 text-left">
+                                <div className="flex items-center gap-1.5 mb-2">
+                                  <Timer className="w-3.5 h-3.5 text-amber-500" />
+                                  <span className="text-[10px] font-bold uppercase tracking-widest text-amber-500">Tempo Limitado</span>
+                                </div>
+                                <h2 className="text-2xl font-serif italic text-white mb-2 drop-shadow-md">{promoBannerTitle}</h2>
+                                <p className="text-xs text-white/80 font-light max-w-[250px]">{promoBannerDesc}</p>
+                              </div>
                             </div>
                             
+                            {/* O Grid de Produtos Promo (Igual ao Catálogo) */}
+                            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
+                              {promoProducts.map(p => (
+                                <CatalogProductCard key={p.id} product={p} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                              ))}
+                            </div>
                           </div>
+
                         </section>
                       )}
 
                       {/* SESSÃO MAIS DESEJADOS */}
-                      <section id="mais-desejados" className="mt-12 md:mt-16 pt-4">
+                      <section id="mais-desejados" className="mt-8 md:mt-16 pt-4">
                         <div className="flex items-center gap-3 mb-6 px-1 md:px-0">
                           <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-btn text-btn-texto flex items-center justify-center"><TrendingUp className="w-3 h-3 md:w-4 md:h-4" /></div>
                           <h2 className="text-xl md:text-2xl font-medium text-texto">Mais Desejados</h2>
                         </div>
-                        <div className="flex overflow-x-auto gap-4 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-8 md:pb-10 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        <div className="flex overflow-x-auto gap-3 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-6 md:pb-10 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {bestSellers.length > 0 ? bestSellers.map(p => (
-                            <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-[80vw] max-w-[280px] sm:max-w-[320px] md:w-full md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                            <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-[70vw] max-w-[240px] sm:max-w-[320px] md:w-full md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                           )) : <p className="text-texto-sec col-span-full">Sem dados de vendas.</p>}
                         </div>
                       </section>
 
-                      {/* SESSÃO DO BANNER SECUNDÁRIO */}
                       {infoBannerActive && (
                         <section className="mt-8 md:mt-24 mb-4">
                           
                           {/* 👇 BANNER SECUNDÁRIO OTIMIZADO 👇 */}
-                          <div className="relative w-full h-[20vh] min-h-[160px] md:h-[40vh] shadow-sm group bg-texto rounded-[20px] md:rounded-[32px]">
+                          <div className="relative w-full h-[20vh] min-h-[160px] md:h-[50vh] shadow-sm group bg-texto rounded-[20px] md:rounded-[32px]">
                             
                             {infoBannerImageUrl && /\.(mp4|webm|ogg|mov)$/i.test(infoBannerImageUrl) ? (
                               <video 
@@ -1035,8 +1040,8 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                             <div className="absolute inset-0 bg-black/40 z-10 pointer-events-none rounded-[20px] md:rounded-[32px]"></div>
                             
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20">
-                              <h2 className="text-3xl sm:text-4xl md:text-6xl font-serif italic text-white mb-2 md:mb-4 drop-shadow-md break-words">{infoBannerTitle}</h2>
-                              <p className="text-xs md:text-xl text-white/90 max-w-2xl mb-4 md:mb-8 drop-shadow-sm font-light px-4">{infoBannerDesc}</p>
+                              <h2 className="text-2xl sm:text-4xl md:text-6xl font-serif italic text-white mb-2 md:mb-4 drop-shadow-md break-words">{infoBannerTitle}</h2>
+                              <p className="text-[10px] md:text-xl text-white/90 max-w-2xl mb-4 md:mb-8 drop-shadow-sm font-light px-4">{infoBannerDesc}</p>
                               {infoBannerBtn && (
                                 <button className="px-5 py-2 md:px-8 md:py-3 bg-white text-neutral-900 font-bold rounded-full hover:bg-neutral-200 transition-colors duration-300 shadow-xl text-xs md:text-base">
                                   {infoBannerBtn}
@@ -1050,7 +1055,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                               {/* =========================================================
                                   LAYOUT MOBILE (md:hidden): Cartões de Catálogo Limpos
                                   ========================================================= */}
-                              <div className="mt-6 md:hidden grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+                              <div className="mt-6 md:hidden grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
                                 {infoBannerProducts.map(p => (
                                   <CatalogProductCard 
                                     key={p.id} 
@@ -1113,7 +1118,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
                       {/* SESSÃO SHOP THE LOOK */}
                       {lookConfig && lookConfig.items.length > 0 && (
-                        <section ref={shopTheLookRef} id="shop-the-look" className="relative h-[150vh] md:h-[180vh] mt-12 md:mt-20 mb-8 md:mb-16 border-t border-borda">
+                        <section ref={shopTheLookRef} id="shop-the-look" className="relative h-[150vh] md:h-[180vh] mt-10 md:mt-20 mb-8 md:mb-16 border-t border-borda">
                           
                           {/* 👇 CAIXA ÚNICA PEGAJOSA COM WILL-CHANGE PARA SALVAR A GPU 👇 */}
                           <motion.div 
@@ -1255,11 +1260,11 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                         </div>
 
                         {totalCatalogPages > 1 && (
-                          <div className="md:hidden flex justify-center items-center gap-4 mt-10">
+                          <div className="md:hidden flex justify-center items-center gap-4 mt-8">
                             <button onClick={() => { setCurrentPage(p => Math.max(1, p - 1)); scrollToSection('catalogo'); }} disabled={currentPage === 1} className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm">
                               <ArrowLeft className="w-5 h-5" />
                             </button>
-                            <span className="text-sm font-bold text-texto-sec tracking-wider">
+                            <span className="text-xs font-bold text-texto-sec tracking-wider">
                               <span className="text-texto">{currentPage}</span> / {totalCatalogPages}
                             </span>
                             <button onClick={() => { setCurrentPage(p => Math.min(totalCatalogPages, p + 1)); scrollToSection('catalogo'); }} disabled={currentPage === totalCatalogPages} className="w-10 h-10 flex items-center justify-center rounded-full bg-card border border-borda text-texto hover:bg-fundo disabled:opacity-30 disabled:cursor-not-allowed transition-colors shadow-sm rotate-180">
@@ -1273,7 +1278,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                           👇 BANNER TERCIÁRIO OTIMIZADO (Abaixo do Catálogo) 👇
                           ============================================================================== */}
                       {thirdBannerActive && (
-                        <section className="mt-12 md:mt-24 mb-10 md:mb-16">
+                        <section className="mt-8 md:mt-24 mb-6 md:mb-16">
                           
                           <div className="relative w-full h-[20vh] min-h-[160px] md:h-[50vh] shadow-sm group bg-texto rounded-[20px] md:rounded-[32px]">
                             
@@ -1299,8 +1304,8 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                             <div className="absolute inset-0 bg-black/40 z-10 pointer-events-none rounded-[20px] md:rounded-[32px]"></div>
                             
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20">
-                              <h2 className="text-3xl sm:text-4xl md:text-6xl font-serif italic text-white mb-2 md:mb-4 drop-shadow-md break-words">{thirdBannerTitle}</h2>
-                              <p className="text-xs md:text-xl text-white/90 max-w-2xl mb-4 md:mb-8 drop-shadow-sm font-light px-4">{thirdBannerDesc}</p>
+                              <h2 className="text-2xl sm:text-4xl md:text-6xl font-serif italic text-white mb-2 md:mb-4 drop-shadow-md break-words">{thirdBannerTitle}</h2>
+                              <p className="text-[10px] md:text-xl text-white/90 max-w-2xl mb-4 md:mb-8 drop-shadow-sm font-light px-4">{thirdBannerDesc}</p>
                               
                               {thirdBannerBtn && (
                                 <button 
@@ -1308,20 +1313,14 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                                     e.preventDefault();
                                     if (!thirdBannerBtnLink) return;
 
-                                    // 1. Limpa o link caso tenha sido salvo com '#' no início
                                     const targetId = thirdBannerBtnLink.replace('#', '').trim();
-                                    
-                                    // 2. Verifica se existe alguma sessão no site com esse nome
                                     const sectionExists = document.getElementById(targetId);
 
                                     if (sectionExists) {
-                                      // Se achou a sessão, desliza até ela!
                                       scrollToSection(targetId);
                                     } else if (thirdBannerBtnLink.startsWith('http')) {
-                                      // Se não achou a sessão e começa com http, é um link externo (abre em nova aba)
                                       window.open(thirdBannerBtnLink, '_blank');
                                     } else {
-                                      // Se deu tudo errado (digitou errado no painel), desliza para o catálogo por segurança
                                       scrollToSection('catalogo');
                                     }
                                   }}
@@ -1334,10 +1333,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                           </div>
                         </section>
                       )}
-                      {/* ==============================================================================
-                          👆 FIM DO BANNER TERCIÁRIO 👆
-                          ============================================================================== */}
-
                     </>
                   )}
                 </>
@@ -1352,7 +1347,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
              animate={{ opacity: 1, y: 0 }}
              exit={{ opacity: 0, y: -15 }}
              transition={{ duration: 0.4, ease: "easeInOut" }}
-             className={`mx-auto px-4 sm:px-6 md:px-12 mt-8 md:mt-12 mb-20 ${profileTab === "favorites" ? "max-w-[1600px] lg:px-16" : "max-w-4xl"}`}
+             className={`mx-auto px-4 sm:px-6 md:px-12 mt-8 md:mt-12 mb-24 md:mb-20 ${profileTab === "favorites" ? "max-w-[1600px] lg:px-16" : "max-w-4xl"}`}
            >
              <div className="bg-card rounded-2xl md:rounded-3xl shadow-sm border border-borda overflow-hidden min-h-[400px] md:min-h-[500px] flex flex-col transition-colors duration-500">
                <div className="flex border-b border-borda flex-nowrap overflow-x-auto scrollbar-hide shrink-0 bg-fundo">
@@ -1398,6 +1393,17 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                            {isSavingProfile ? <Loader2 className="w-5 h-5 animate-spin" /> : "Salvar Alterações"}
                          </button>
                        </form>
+
+                       {/* 👇 BOTÕES DE AÇÃO (MOBILE FRIENDLY) 👇 */}
+                       <div className="mt-8 pt-6 border-t border-borda flex justify-between items-center md:hidden">
+                         <button type="button" onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-fundo border border-borda rounded-xl text-texto-sec hover:text-texto transition-colors flex items-center gap-2 font-bold text-xs">
+                           {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />} {isDarkMode ? "Claro" : "Escuro"}
+                         </button>
+                         <button type="button" onClick={onLogout} className="text-red-500 font-bold text-xs flex items-center gap-1.5 p-3 bg-red-500/5 border border-red-500/10 rounded-xl hover:bg-red-500/10 transition-colors">
+                           <LogOut className="w-4 h-4"/> Sair da Conta
+                         </button>
+                       </div>
+
                      </motion.div>
                    )}
 
@@ -1448,9 +1454,9 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                            <p className="text-sm md:text-base mb-6">Você ainda não salvou nenhum favorito.</p>
                          </div>
                        ) : (
-                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-8">
+                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-8">
                            {favoriteProducts.map(p => (
-                             <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-[80vw] max-w-[280px] sm:max-w-[320px] md:w-full md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                             <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-[70vw] max-w-[240px] sm:max-w-[320px] md:w-full md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                            ))}
                          </div>
                        )}
@@ -1469,7 +1475,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -15 }}
               transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 md:px-12 mt-6 md:mt-12 mb-20"
+              className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 md:px-12 mt-6 md:mt-12 mb-24 md:mb-20"
             >
               <AnimatePresence mode="wait">
                 {checkoutStep === "processing" || checkoutStep === "success" ? (
@@ -1536,7 +1542,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                     transition={{ duration: 0.4 }}
                     className="flex flex-col lg:flex-row gap-6 md:gap-8 items-start"
                   >
-                    <div className="flex-1 w-full bg-card rounded-2xl md:rounded-3xl p-5 md:p-10 shadow-sm border border-borda transition-colors duration-500 overflow-hidden">
+                    <div className="flex-1 w-full bg-card rounded-2xl md:rounded-3xl p-4 sm:p-5 md:p-10 shadow-sm border border-borda transition-colors duration-500 overflow-hidden">
                       
                       <div className="flex items-center gap-3 md:gap-4 mb-6 md:mb-8 pb-4 md:pb-6 border-b border-borda">
                         <button onClick={closeCart} className="p-2 md:p-3 hover:bg-fundo rounded-full transition-colors text-texto-sec hover:text-texto">
@@ -1620,7 +1626,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                       </AnimatePresence>
                     </div>
 
-                    <div className="w-full lg:w-[400px] shrink-0 bg-card rounded-2xl md:rounded-3xl p-6 md:p-8 shadow-sm border border-borda sticky top-20 md:top-28 transition-colors duration-500">
+                    <div className="w-full lg:w-[400px] shrink-0 bg-card rounded-2xl md:rounded-3xl p-5 md:p-8 shadow-sm border border-borda sticky top-20 md:top-28 transition-colors duration-500">
                       <h3 className="text-lg md:text-xl font-bold text-texto mb-5 md:mb-8">Resumo do Pedido</h3>
                       
                       <div className="space-y-3 md:space-y-4 mb-5 md:mb-8">
@@ -1801,7 +1807,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                   )}
                 </div>
 
-                <div className="mt-auto pt-8 pb-2 space-y-8">
+                <div className="mt-auto pt-8 pb-28 md:pb-2 space-y-8">
                   
                   <div className="border-t border-borda pt-8">
                     <h3 className="text-[11px] md:text-sm font-bold text-texto uppercase tracking-wider mb-4">Avaliações</h3>
@@ -1882,7 +1888,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
         )}
       </AnimatePresence>
 
-      <footer className="bg-texto pt-12 md:pt-16 pb-8 mt-auto transition-colors duration-500">
+      <footer className="bg-texto pt-12 md:pt-16 pb-24 md:pb-8 mt-auto transition-colors duration-500">
         <div className="w-full max-w-[1600px] mx-auto px-6 md:px-12 lg:px-16">
           
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-10 md:gap-12 mb-10 md:mb-12">
@@ -1911,7 +1917,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               <h4 className="font-bold text-card mb-3 md:mb-4 uppercase text-[10px] md:text-xs tracking-wider">Fique por dentro</h4>
               <p className="text-card/70 text-xs md:text-sm mb-3 md:mb-4">Assine nossa newsletter para receber novidades.</p>
               <form onSubmit={handleSubscribeNewsletter} className="flex gap-2">
-                {/* Campo de input escurecido com texto claro */}
                 <input 
                   type="email" 
                   required 
@@ -1920,7 +1925,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                   placeholder="Seu e-mail..." 
                   className="flex-1 h-10 bg-card/10 border border-card/20 rounded-lg px-3 md:px-4 text-xs md:text-sm focus:outline-none focus:border-card text-card placeholder:text-card/50 min-w-0 transition-colors" 
                 />
-                {/* Botão invertido (Branco) */}
                 <button type="submit" disabled={isSubscribing} className="bg-card text-texto h-10 px-4 rounded-lg text-xs md:text-sm font-bold hover:bg-card/90 transition-colors duration-300 shrink-0 disabled:opacity-50">
                   {isSubscribing ? "..." : "Assinar"}
                 </button>
@@ -1933,7 +1937,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
             <div className="flex items-center gap-4 md:gap-6 text-card/70">
               <Instagram className="w-4 h-4 md:w-5 md:h-5 hover:text-card transition-colors cursor-pointer" />
               <Facebook className="w-4 h-4 md:w-5 md:h-5 hover:text-card transition-colors cursor-pointer" />
-            
               <a 
                 href="https://github.com/uGuilherm3" 
                 target="_blank" 
@@ -1948,7 +1951,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
         </div>
       </footer>
 
-      <div className={`fixed bottom-6 md:bottom-8 left-1/2 -translate-x-1/2 bg-btn text-btn-texto px-4 md:px-6 py-2.5 md:py-3 rounded-full shadow-2xl flex items-center gap-2 md:gap-3 transform transition-all duration-300 z-[999] ${toast.show ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"}`}>
+      <div className={`fixed bottom-[84px] md:bottom-8 left-1/2 -translate-x-1/2 bg-btn text-btn-texto px-4 md:px-6 py-2.5 md:py-3 rounded-full shadow-2xl flex items-center gap-2 md:gap-3 transform transition-all duration-300 z-[999] ${toast.show ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0 pointer-events-none"}`}>
         <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-green-500" />
         <span className="font-bold text-xs md:text-sm whitespace-nowrap">{toast.message}</span>
       </div>
