@@ -1006,11 +1006,12 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                         </div>
                       </section>
 
+                      {/* SESSÃO DO BANNER SECUNDÁRIO */}
                       {infoBannerActive && (
                         <section className="mt-8 md:mt-24 mb-4">
                           
                           {/* 👇 BANNER SECUNDÁRIO OTIMIZADO 👇 */}
-                          <div className="relative w-full h-[20vh] min-h-[160px] md:h-[50vh] shadow-sm group bg-texto rounded-[20px] md:rounded-[32px]">
+                          <div className="relative w-full h-[20vh] min-h-[160px] md:h-[40vh] shadow-sm group bg-texto rounded-[20px] md:rounded-[32px]">
                             
                             {infoBannerImageUrl && /\.(mp4|webm|ogg|mov)$/i.test(infoBannerImageUrl) ? (
                               <video 
