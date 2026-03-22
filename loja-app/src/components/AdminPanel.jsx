@@ -957,7 +957,20 @@ export default function AdminPanel({ onBack }) {
                           <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título Principal</label><input type="text" value={thirdBannerTitle} onChange={(e) => setThirdBannerTitle(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
                           <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Texto Menor</label><input type="text" value={thirdBannerDesc} onChange={(e) => setThirdBannerDesc(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
                           <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Texto do Botão</label><input type="text" value={thirdBannerBtn} onChange={(e) => setThirdBannerBtn(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
-                          <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Link do Botão</label><input type="text" value={thirdBannerBtnLink} onChange={(e) => setThirdBannerBtnLink(e.target.value)} placeholder="Ex: #ofertas ou https://..." className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
+                          {/* 👇 NOVA VERSÃO COM CAIXA DE SELEÇÃO OTIMIZADA 👇 */}
+                          <div>
+                            <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Ir para...</label>
+                            <select 
+                              value={thirdBannerBtnLink || "#catalogo"} // Valor padrão agora com #
+                              onChange={(e) => setThirdBannerBtnLink(e.target.value)} 
+                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none bg-white text-sm"
+                            >
+                              {/* As opções agora contêm o '#' necessário para o link de âncora */}
+                              <option value="#catalogo">Início do Catálogo (Grid de Produtos)</option>
+                              <option value="#ofertas">Sessão de Ofertas (Se houver)</option>
+                              <option value="#lancamentos">Sessão de Lançamentos (Se houver)</option>
+                            </select>
+                          </div>
                         </div>
 
                         <div>

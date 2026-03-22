@@ -1283,12 +1283,32 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                               <p className="text-xs md:text-xl text-white/90 max-w-2xl mb-4 md:mb-8 drop-shadow-sm font-light px-4">{thirdBannerDesc}</p>
                               
                               {thirdBannerBtn && (
-                                <a 
-                                  href={thirdBannerBtnLink}
+                                <button 
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    if (!thirdBannerBtnLink) return;
+
+                                    // 1. Limpa o link caso tenha sido salvo com '#' no início
+                                    const targetId = thirdBannerBtnLink.replace('#', '').trim();
+                                    
+                                    // 2. Verifica se existe alguma sessão no site com esse nome
+                                    const sectionExists = document.getElementById(targetId);
+
+                                    if (sectionExists) {
+                                      // Se achou a sessão, desliza até ela!
+                                      scrollToSection(targetId);
+                                    } else if (thirdBannerBtnLink.startsWith('http')) {
+                                      // Se não achou a sessão e começa com http, é um link externo (abre em nova aba)
+                                      window.open(thirdBannerBtnLink, '_blank');
+                                    } else {
+                                      // Se deu tudo errado (digitou errado no painel), desliza para o catálogo por segurança
+                                      scrollToSection('catalogo');
+                                    }
+                                  }}
                                   className="inline-block px-5 py-2 md:px-8 md:py-3 bg-white text-neutral-900 font-bold rounded-full hover:bg-neutral-200 transition-colors duration-300 shadow-xl text-xs md:text-base pointer-events-auto"
                                 >
                                   {thirdBannerBtn}
-                                </a>
+                                </button>
                               )}
                             </div>
                           </div>
