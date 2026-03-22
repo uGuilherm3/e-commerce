@@ -217,6 +217,9 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const [isCartLoaded, setIsCartLoaded] = useState(false);
   const [toast, setToast] = useState({ show: false, message: "" }); 
   const [pixData, setPixData] = useState(null); 
+  
+  // 👇 ESTADO PARA SALVAR O TEXTO DO WPP 👇
+  const [lastOrderWhatsAppText, setLastOrderWhatsAppText] = useState("");
 
   const [currentView, setCurrentView] = useState("store"); 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -313,8 +316,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const scrollToSection = useCallback((sectionId) => {
     const element = document.getElementById(sectionId);
     if (element) {
-      // 👇 O respiro mágico! Aumentamos de 80 para 140 pixels.
-      // Isso impede que o cabeçalho "coma" a sessão ao passar a página.
+      // O respiro mágico para não esconder o título
       const headerOffset = 140; 
       const elementPosition = element.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
@@ -428,7 +430,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     finally { setIsSavingProfile(false); setAvatarFile(null); }
   };
 
-  // 👇 FAVORITOS OTMIZADO (Sem dependências externas para não recriar a função)
   const toggleFavorite = useCallback(async (productId, e) => {
     if (e) e.stopPropagation(); 
     const safeUser = Parse.User.current();
@@ -605,6 +606,19 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       }
 
       await Parse.Object.saveAll(productsToUpdate);
+
+      // 👇 NOVA LÓGICA DO WHATSAPP AQUI 👇
+      let wppText = `${activeUser?.get("name") ? `Olá, me chamo ${activeUser.get("name")}!` : "Olá!"} Acabei de fazer um pedido na loja (Pedido #${order.id.slice(-6).toUpperCase()}).\n\n*Resumo da Compra:*\n`;
+      cart.forEach(item => {
+        const promo = getActivePromo(item.product);
+        wppText += `▪️ ${item.quantity}x ${item.product.get("name")} ${item.variant ? `(${item.variant})` : ''} - R$ ${(promo.price * item.quantity).toFixed(2)}\n`;
+      });
+      wppText += `\n*Total do Pedido:* R$ ${cartTotal.toFixed(2)}`;
+      wppText += `\n*Pagamento:* ${paymentMethod === "pix" ? "PIX" : "Pagamento na Entrega"}`;
+      
+      setLastOrderWhatsAppText(wppText);
+      // 👆 FIM DA LÓGICA DO WHATSAPP 👆
+
       setCart([]); localStorage.removeItem("florESol_cart"); setCheckoutStep("success"); 
       fetchProducts(); if (profileTab === "orders") fetchOrders();
       
@@ -617,9 +631,11 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     setTimeout(() => { setCheckoutStep("cart"); setLastOrderId(null); setPixData(null); }, 400); 
   };
 
+  // 👇 LÓGICA DE REDIRECIONAMENTO ATUALIZADA 👇
   const handleWhatsAppRedirect = () => {
-    const texto = `${activeUser?.get("name") ? `Olá, me chamo ${activeUser.get("name")}!` : "Olá!"} Acabei de fazer um pedido (ID: ${lastOrderId}).\n\nMétodo: *${paymentMethod === "pix" ? "PIX" : "Pagamento na Entrega"}*.`;
-    window.open(`https://wa.me/5585999999999?text=${encodeURIComponent(texto)}`, '_blank');
+    const telefone = "5585999113659";
+    const texto = lastOrderWhatsAppText || "Olá! Acabei de fazer um pedido na loja.";
+    window.open(`https://wa.me/${telefone}?text=${encodeURIComponent(texto)}`, '_blank');
     closeCart();
   };
 
@@ -646,7 +662,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const promoBannerDesc = storeSettings?.get("promoBannerDesc") || "Uma seleção exclusiva de peças com condições únicas. Não deixe para depois.";
   const promoBannerImageUrl = storeSettings?.get("promoBannerImageUrl") || "";
 
-  // 👇 NOVOS: BANNER TERCIÁRIO (Abaixo do catálogo) 👇
+  // Banner Terciário
   const thirdBannerActive = storeSettings ? storeSettings.get("thirdBannerActive") !== false : true;
   const thirdBannerTitle = storeSettings?.get("thirdBannerTitle") || "";
   const thirdBannerDesc = storeSettings?.get("thirdBannerDesc") || "";
@@ -654,7 +670,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const thirdBannerBtnLink = storeSettings?.get("thirdBannerBtnLink") || "#";
   const thirdBannerImageUrl = storeSettings?.get("thirdBannerImageUrl") || "";
 
-  // 👇 MOTOR INTELIGENTE DO BANNER (Consertado com React.memo)
+  // MOTOR INTELIGENTE DO BANNER
   useEffect(() => {
     if (bannersArray.length <= 1) return;
     let interval;
@@ -993,9 +1009,9 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                       {infoBannerActive && (
                         <section className="mt-8 md:mt-24 mb-4">
                           
-                          {/* 👇 BANNER: Fino no mobile, Grande no Desktop 👇 */}
-                          <div className="relative w-full h-[20vh] min-h-[160px] md:h-[50vh] rounded-[20px] md:rounded-[32px] overflow-hidden shadow-sm group bg-texto transition-colors">
-                            {/* 👇 MÁGICA DO VÍDEO/IMAGEM: Se o link terminar em .mp4, toca o vídeo. Se não, mostra a foto! */}
+                          {/* 👇 BANNER SECUNDÁRIO OTIMIZADO 👇 */}
+                          <div className="relative w-full h-[20vh] min-h-[160px] md:h-[50vh] shadow-sm group bg-texto rounded-[20px] md:rounded-[32px]">
+                            
                             {infoBannerImageUrl && /\.(mp4|webm|ogg|mov)$/i.test(infoBannerImageUrl) ? (
                               <video 
                                 src={infoBannerImageUrl} 
@@ -1003,17 +1019,20 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                                 loop 
                                 muted 
                                 playsInline 
-                                className="absolute inset-0 w-full h-full object-cover object-center z-0" 
+                                className="absolute inset-0 w-full h-full object-cover object-center z-0 pointer-events-none rounded-[20px] md:rounded-[32px]" 
                               />
                             ) : infoBannerImageUrl ? (
                               <img 
                                 src={infoBannerImageUrl} 
                                 alt={infoBannerTitle} 
                                 loading="lazy" 
-                                className="absolute inset-0 w-full h-full object-cover object-center z-0" 
+                                className="absolute inset-0 w-full h-full object-cover object-center z-0 rounded-[20px] md:rounded-[32px]" 
                               />
                             ) : null}
-                            <div className="absolute inset-0 bg-black/40 transition-colors hover:bg-black/50 duration-500 z-10"></div>
+                            
+                            {/* Película escura com rounded direto nela */}
+                            <div className="absolute inset-0 bg-black/40 z-10 pointer-events-none rounded-[20px] md:rounded-[32px]"></div>
+                            
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20">
                               <h2 className="text-3xl sm:text-4xl md:text-6xl font-serif italic text-white mb-2 md:mb-4 drop-shadow-md break-words">{infoBannerTitle}</h2>
                               <p className="text-xs md:text-xl text-white/90 max-w-2xl mb-4 md:mb-8 drop-shadow-sm font-light px-4">{infoBannerDesc}</p>
@@ -1250,7 +1269,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                       </section>
 
                       {/* ==============================================================================
-                          👇 NOVO BANNER TERCIÁRIO (Abaixo do Catálogo) 👇
+                          👇 BANNER TERCIÁRIO OTIMIZADO (Abaixo do Catálogo) 👇
                           ============================================================================== */}
                       {thirdBannerActive && (
                         <section className="mt-12 md:mt-24 mb-10 md:mb-16">
