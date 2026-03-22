@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Parse from "../parseSetup";
 import { ArrowLeft, Loader2, TrendingUp, DollarSign, Package, Calendar, Clock, ShoppingBag, Trash2, Link as LinkIcon, Image as ImageIcon, Plus, Wallet, BarChart, Activity, X, Timer, Edit3, Sparkles } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion"; // ADICIONADO PARA ANIMAÇÕES
+import { motion, AnimatePresence } from "framer-motion";
 
 const DEFAULT_PRODUCT_IMG = "https://images.unsplash.com/photo-1441986300917-64674bd600d8?q=80&w=2070&auto=format&fit=crop";
 const DEFAULT_INFO_BANNER_IMG = "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop";
@@ -16,7 +16,7 @@ export default function AdminPanel({ onBack }) {
   const [updatingOrderStatus, setUpdatingOrderStatus] = useState(null);
 
   const [products, setProducts] = useState([]);
-  const [isFormOpen, setIsFormOpen] = useState(false); // NOVO: Controle do formulário de produto
+  const [isFormOpen, setIsFormOpen] = useState(false);
   
   // Estados do Formulário de Produto
   const [name, setName] = useState("");
@@ -41,6 +41,7 @@ export default function AdminPanel({ onBack }) {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  // Estados de Aparência
   const [settingsId, setSettingsId] = useState(null);
   const [banners, setBanners] = useState([]);
   const [infoBannerActive, setInfoBannerActive] = useState(true);
@@ -57,6 +58,12 @@ export default function AdminPanel({ onBack }) {
   const [promoBannerFile, setPromoBannerFile] = useState(null);
   const [currentPromoBannerUrl, setCurrentPromoBannerUrl] = useState(DEFAULT_PROMO_BANNER_IMG);
   const [linkPromoBannerUrl, setLinkPromoBannerUrl] = useState(""); 
+
+  // 👇 NOVOS ESTADOS PARA O "SHOP THE LOOK"
+  const [lookBannerFile, setLookBannerFile] = useState(null);
+  const [currentLookBannerUrl, setCurrentLookBannerUrl] = useState("");
+  const [linkLookBannerUrl, setLinkLookBannerUrl] = useState("");
+  const [lookItems, setLookItems] = useState([]); // Vai guardar os pontinhos
 
   const availableCategories = [...new Set(products.flatMap(p => p.get("categories") || [p.get("category")]).filter(Boolean))];
 
@@ -153,6 +160,10 @@ export default function AdminPanel({ onBack }) {
         setPromoBannerTitle(s.get("promoBannerTitle") || "");
         setPromoBannerDesc(s.get("promoBannerDesc") || "");
         setCurrentPromoBannerUrl(s.get("promoBannerImageUrl") || DEFAULT_PROMO_BANNER_IMG);
+
+        // 👇 PUXANDO OS DADOS DO SHOP THE LOOK
+        setCurrentLookBannerUrl(s.get("lookImageUrl") || "");
+        setLookItems(s.get("lookItems") || []);
       }
     } catch (e) { console.error(e); }
   };
@@ -181,8 +192,10 @@ export default function AdminPanel({ onBack }) {
       if (discountPrice && discountEndsAt) { p.set("discountPrice", Number(discountPrice)); p.set("discountEndsAt", new Date(discountEndsAt)); }
       else { p.unset("discountPrice"); p.unset("discountEndsAt"); }
 
+      // 👇 A DESCRIÇÃO AGORA SALVA SEMPRE, MESMO SEM O SELO PREMIUM
+      p.set("description", description);
+
       if (hasDetails) {
-        p.set("description", description);
         if (detailsMediaFile) { const f = new Parse.File("media", detailsMediaFile); await f.save(); p.set("detailsMediaUrl", f.url()); }
         else if (linkDetailsMediaUrl.trim()) p.set("detailsMediaUrl", linkDetailsMediaUrl.trim());
       }
@@ -247,6 +260,26 @@ export default function AdminPanel({ onBack }) {
       } else {
         s.set("promoBannerImageUrl", linkPromoBannerUrl.trim()); 
       }
+
+      // 👇 SALVANDO OS DADOS DO SHOP THE LOOK
+      if (lookBannerFile) { 
+        const f = new Parse.File("look", lookBannerFile); 
+        await f.save(); 
+        s.set("lookImageUrl", f.url()); 
+      } else if (linkLookBannerUrl.trim()) { 
+        s.set("lookImageUrl", linkLookBannerUrl.trim()); 
+      } else if (!currentLookBannerUrl) {
+        s.unset("lookImageUrl");
+      }
+      
+      // Limpa os itens para salvar no Parse sem coisas inúteis
+      const cleanLookItems = lookItems.map(item => ({
+        productId: item.productId,
+        x: item.x,
+        y: item.y,
+        label: item.label
+      }));
+      s.set("lookItems", cleanLookItems);
 
       await s.save(); alert("Aparência da loja atualizada!"); fetchSettings();
     } catch (err) { alert(err.message); } finally { setSavingSettings(false); }
@@ -731,6 +764,110 @@ export default function AdminPanel({ onBack }) {
                       </div>
                     </div>
                   </div>
+
+                  {/* 👇 NOVO: GERENCIADOR DO SHOP THE LOOK 👇 */}
+                  <div className="pt-10 border-t border-neutral-200">
+                    <div className="flex justify-between items-start mb-6">
+                      <div>
+                        <h2 className="text-2xl font-semibold mb-1 flex items-center gap-2">
+                          <Sparkles className="w-6 h-6 text-neutral-900" /> Shop the Look
+                        </h2>
+                        <p className="text-neutral-500 text-sm">Adicione uma foto editorial e clique nela para criar pontos interativos.</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {/* LADO ESQUERDO: A FOTO INTERATIVA */}
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <label className="block text-xs font-bold text-neutral-500 uppercase">Imagem do Look (Vertical/Retrato)</label>
+                          {(lookBannerFile || currentLookBannerUrl || linkLookBannerUrl) && (
+                            <button type="button" onClick={() => { setLookBannerFile(null); setCurrentLookBannerUrl(""); setLinkLookBannerUrl(""); setLookItems([]); }} className="text-[10px] font-bold text-red-500 hover:text-red-700 uppercase tracking-wider flex items-center gap-1"><Trash2 className="w-3 h-3" /> Limpar Tudo</button>
+                          )}
+                        </div>
+
+                        {/* ÁREA CLICÁVEL DA FOTO */}
+                        <div 
+                          className={`w-full aspect-[3/4] max-w-sm mx-auto rounded-2xl overflow-hidden relative shadow-sm border border-neutral-200 transition-all ${(lookBannerFile || currentLookBannerUrl || linkLookBannerUrl) ? 'cursor-crosshair' : 'bg-neutral-100 flex items-center justify-center'}`}
+                          onClick={(e) => {
+                            // A mágica matemática que pega a coordenada exata do clique
+                            if (!lookBannerFile && !currentLookBannerUrl && !linkLookBannerUrl) return;
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            const x = ((e.clientX - rect.left) / rect.width) * 100;
+                            const y = ((e.clientY - rect.top) / rect.height) * 100;
+                            
+                            setLookItems([...lookItems, { id: Date.now().toString(), x, y, productId: "", label: "Nova Peça" }]);
+                          }}
+                        >
+                          {(lookBannerFile || currentLookBannerUrl || linkLookBannerUrl) ? (
+                            <>
+                              <img src={lookBannerFile ? URL.createObjectURL(lookBannerFile) : (linkLookBannerUrl || currentLookBannerUrl)} alt="Preview Look" className="absolute inset-0 w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/10 pointer-events-none"></div>
+                              
+                              {/* Renderiza as bolinhas onde você clicou */}
+                              {lookItems.map((item, idx) => (
+                                <div key={item.id || idx} className="absolute z-10 w-6 h-6 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/40 border-2 border-white backdrop-blur-sm flex items-center justify-center shadow-lg pointer-events-none" style={{ top: `${item.y}%`, left: `${item.x}%` }}>
+                                  <span className="w-2 h-2 rounded-full bg-neutral-900"></span>
+                                  <span className="absolute -bottom-6 bg-neutral-900 text-white text-[10px] font-bold px-2 py-0.5 rounded whitespace-nowrap">{item.label}</span>
+                                </div>
+                              ))}
+                            </>
+                          ) : (
+                            <div className="text-neutral-400 text-center p-6 flex flex-col items-center">
+                              <Sparkles className="w-10 h-10 mb-2 opacity-50" />
+                              <p className="text-sm font-medium">Adicione uma foto abaixo</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* INPUTS DE IMAGEM */}
+                        <div className="flex flex-col gap-2 p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                          <input type="file" accept="image/*" onChange={(e) => {setLookBannerFile(e.target.files[0]); setCurrentLookBannerUrl(""); setLinkLookBannerUrl("");}} className="w-full text-xs" />
+                          <div className="flex items-center gap-2"><div className="flex-1 h-px bg-neutral-200"></div><span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">OU LINK</span><div className="flex-1 h-px bg-neutral-200"></div></div>
+                          <input type="url" placeholder="Ex: https://pinterest.com/foto.jpg" value={linkLookBannerUrl} onChange={(e) => {setLinkLookBannerUrl(e.target.value); setLookBannerFile(null); setCurrentLookBannerUrl("");}} className="w-full px-3 py-2 text-sm bg-white border border-neutral-200 rounded-md outline-none" />
+                        </div>
+                      </div>
+
+                      {/* LADO DIREITO: LISTA DE PRODUTOS MARCADOS */}
+                      <div className="bg-neutral-50 p-6 rounded-2xl border border-neutral-200">
+                        <div className="flex justify-between items-center mb-6">
+                          <h3 className="text-sm font-bold text-neutral-900 uppercase tracking-wider">Peças Marcadas ({lookItems.length})</h3>
+                          {lookItems.length === 0 && <span className="text-xs text-neutral-500">Clique na foto para adicionar</span>}
+                        </div>
+
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                          {lookItems.map((item, idx) => (
+                            <div key={item.id || idx} className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm relative group">
+                              <button type="button" onClick={() => setLookItems(lookItems.filter(x => x !== item))} className="absolute top-2 right-2 p-1.5 text-neutral-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"><Trash2 className="w-4 h-4" /></button>
+                              
+                              <div className="grid grid-cols-1 gap-3 pr-6">
+                                <div>
+                                  <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Rótulo Curto</label>
+                                  <input type="text" value={item.label} onChange={(e) => setLookItems(lookItems.map(x => x === item ? {...x, label: e.target.value} : x))} placeholder="Ex: Calça Linho" className="w-full px-3 py-2 text-sm bg-neutral-50 border border-neutral-200 rounded-md outline-none focus:border-neutral-900" />
+                                </div>
+                                <div>
+                                  <label className="block text-[10px] font-bold text-neutral-500 uppercase mb-1">Produto Vinculado</label>
+                                  <select value={item.productId} onChange={(e) => setLookItems(lookItems.map(x => x === item ? {...x, productId: e.target.value} : x))} className="w-full px-3 py-2 text-sm bg-neutral-50 border border-neutral-200 rounded-md outline-none focus:border-neutral-900">
+                                    <option value="">Selecione o produto...</option>
+                                    {products.map(p => (
+                                      <option key={p.id} value={p.id}>{p.get("name")}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                          {lookItems.length === 0 && (
+                            <div className="text-center py-10 border-2 border-dashed border-neutral-200 rounded-xl">
+                              <p className="text-sm text-neutral-400 font-medium">Nenhum ponto criado.</p>
+                              <p className="text-xs text-neutral-400 mt-1">Carregue uma imagem e clique sobre ela.</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* 👆 FIM DO GERENCIADOR DO SHOP THE LOOK 👆 */}
 
                   <div className="pt-10 border-t border-neutral-200">
                     <div className="flex justify-between items-start mb-2">
