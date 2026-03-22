@@ -820,7 +820,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           👇 NAVIGATION BAR INFERIOR FLUTUANTE (MOBILE) 👇
           ============================================================================== */}
       {!detailedProduct && (
-        <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-fundo/95 backdrop-blur-xl border border-borda rounded-2xl z-[100] flex justify-around items-center h-16 px-2 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+        <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-fundo/80 backdrop-blur-md rounded-2xl z-[100] flex justify-around items-center h-16 px-2 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
           <button onClick={() => {setCurrentView('store'); setIsSearchExpanded(false); window.scrollTo(0,0);}} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${currentView === 'store' && !isSearchExpanded ? 'text-texto scale-110' : 'text-texto-sec hover:text-texto'} transition-all`}>
             <Home className="w-5 h-5" />
             <span className="text-[9px] font-bold tracking-wide">Início</span>
