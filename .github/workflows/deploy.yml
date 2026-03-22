@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: ["main"] # Se a sua branch principal for 'master', troque aqui
+    branches: ["main"]
 
 permissions:
   contents: read
@@ -16,29 +16,30 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Baixar o código
         uses: actions/checkout@v4
         
-      - name: Setup Node
+      - name: Instalar Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
           
-      - name: Instalar Dependências
-        run: npm ci
-        
-      - name: Compilar o Projeto (Build)
-        run: npm run build
-        
-      - name: Setup Pages
+      - name: Instalar Dependências e Compilar
+        # 👇 A MÁGICA: Avisamos o robô para entrar na sua subpasta!
+        working-directory: ./loja-app
+        run: |
+          npm install
+          npm run build
+          
+      - name: Preparar o GitHub Pages
         uses: actions/configure-pages@v4
         
-      - name: Upload artifact
+      - name: Fazer o Upload da pasta 'dist'
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './dist'
+          # 👇 A MÁGICA 2: Mostramos onde a pasta 'dist' foi criada
+          path: './loja-app/dist' 
           
-      - name: Deploy to GitHub Pages
+      - name: Publicar o Site
         id: deployment
         uses: actions/deploy-pages@v4
