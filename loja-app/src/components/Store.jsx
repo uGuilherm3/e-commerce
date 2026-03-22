@@ -26,7 +26,72 @@ const PromoTimer = React.memo(({ endsAt }) => {
   return <span className="text-white font-bold text-[10px] tracking-widest uppercase">Termina em {hours}h {minutes}m</span>;
 });
 
-// 👇 CARD PADRÃO OTIMIZADO PARA MOBILE 👇
+// 👇 NOVO: CARD EXCLUSIVO PARA O MOBILE (Leve, sem degradê pesado, sem selo Premium) 👇
+const MobileProductCard = React.memo(({ product, isFav, promo, onOpenDetails, onToggleFav, onAddToCart, isFullRow }) => {
+  const isOutOfStock = product.get("stock") <= 0;
+  
+  if (isFullRow) {
+    return (
+      <div className="flex flex-row h-[120px] bg-card rounded-2xl p-2.5 border border-borda shadow-sm gap-3">
+         <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-[90px] shrink-0 h-full rounded-xl overflow-hidden bg-fundo relative ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+           <img src={product.get("imageUrl")} loading="lazy" className={`w-full h-full object-cover ${isOutOfStock ? "opacity-50 grayscale" : ""}`} alt={product.get("name")} />
+           <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-1.5 right-1.5 p-1.5 bg-card/60 backdrop-blur-md rounded-full text-texto shadow-sm">
+             <Heart className="w-3.5 h-3.5" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+           </button>
+           {isOutOfStock && <div className="absolute top-1.5 left-1.5 bg-card/90 backdrop-blur-sm text-texto text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase shadow-sm">Esgotado</div>}
+         </div>
+         <div className="flex flex-col flex-1 py-0.5 justify-between min-w-0">
+           <h3 className="font-medium text-sm text-texto line-clamp-2 leading-tight pr-1">{product.get("name")}</h3>
+           <div className="mt-auto">
+             <div className="flex flex-col mb-1.5">
+               {promo.isActive ? (
+                 <><span className="text-[9px] line-through text-texto-sec">R$ {product.get("price").toFixed(2)}</span><span className="text-texto font-bold text-sm">R$ {promo.price.toFixed(2)}</span></>
+               ) : (
+                 <span className="text-texto font-bold text-sm">R$ {product.get("price").toFixed(2)}</span>
+               )}
+             </div>
+             {!isOutOfStock ? (
+               <button onClick={(e) => onAddToCart(product, e)} className="w-full bg-texto text-card font-bold py-2 text-[10px] rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform shadow-sm"><Plus className="w-3 h-3" /> Adicionar</button>
+             ) : (
+               <div className="w-full bg-fundo text-texto-sec font-bold py-2 text-[10px] rounded-lg flex items-center justify-center border border-borda">Esgotado</div>
+             )}
+           </div>
+         </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full bg-card rounded-2xl p-2 border border-borda shadow-sm gap-2">
+       <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-full aspect-[4/5] shrink-0 rounded-xl overflow-hidden bg-fundo relative ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+         <img src={product.get("imageUrl")} loading="lazy" className={`w-full h-full object-cover ${isOutOfStock ? "opacity-50 grayscale" : ""}`} alt={product.get("name")} />
+         <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-2 right-2 p-1.5 bg-card/60 backdrop-blur-md rounded-full text-texto shadow-sm">
+           <Heart className="w-3.5 h-3.5" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+         </button>
+         {isOutOfStock && <div className="absolute top-2 left-2 bg-card/90 backdrop-blur-sm text-texto text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase shadow-sm">Esgotado</div>}
+       </div>
+       <div className="flex flex-col flex-1 justify-between px-1 pb-1">
+         <h3 className="font-medium text-xs text-texto line-clamp-2 leading-tight mb-2">{product.get("name")}</h3>
+         <div className="mt-auto">
+           <div className="flex flex-col mb-2">
+             {promo.isActive ? (
+               <><span className="text-[9px] line-through text-texto-sec">R$ {product.get("price").toFixed(2)}</span><span className="text-texto font-bold text-sm">R$ {promo.price.toFixed(2)}</span></>
+             ) : (
+               <span className="text-texto font-bold text-sm">R$ {product.get("price").toFixed(2)}</span>
+             )}
+           </div>
+           {!isOutOfStock ? (
+             <button onClick={(e) => onAddToCart(product, e)} className="w-full bg-texto text-card font-bold py-2 text-[10px] rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform shadow-sm"><Plus className="w-3 h-3" /> Adic.</button>
+           ) : (
+             <div className="w-full bg-fundo text-texto-sec font-bold py-2 text-[10px] rounded-lg flex items-center justify-center border border-borda">Esgotado</div>
+           )}
+         </div>
+       </div>
+    </div>
+  );
+}, (prev, next) => prev.product.id === next.product.id && prev.isFav === next.isFav && prev.promo.isActive === next.promo.isActive);
+
+// 👇 CARDS ORIGINAIS (Agora utilizados exclusivamente no Desktop) 👇
 const StandardProductCard = React.memo(({ product, config, isFav, promo, onOpenDetails, onToggleFav, onAddToCart }) => {
   const { aspectClass = "aspect-[3/4]", tag = null, wrapClass = "w-full" } = config;
   const isOutOfStock = product.get("stock") <= 0;
@@ -34,36 +99,30 @@ const StandardProductCard = React.memo(({ product, config, isFav, promo, onOpenD
 
   return (
     <div className={`relative shrink-0 ${wrapClass} snap-center pb-4 pt-2`}>
-      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group w-full h-full ${aspectClass} relative rounded-[20px] md:rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group w-full h-full ${aspectClass} relative rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
         <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
-        
-        <div className="absolute top-3 left-3 md:top-5 md:left-5 flex items-center gap-2 z-30 pointer-events-none">
-          {tag && <div className="bg-texto text-card text-[9px] md:text-xs font-bold px-2.5 py-1 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md">{tag}</div>}
+        <div className="absolute top-5 left-5 flex items-center gap-2 z-30 pointer-events-none">
+          {tag && <div className="bg-texto text-card text-xs font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-md">{tag}</div>}
           {hasDetails && !isOutOfStock && (
-            <div className={`backdrop-blur-md text-neutral-900 text-[9px] md:text-xs font-bold px-2.5 py-1 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-1.5 transition-opacity opacity-100 md:opacity-0 md:group-hover:opacity-100 ${tag ? '' : 'bg-white/40 md:bg-white/30'}`}>
-              <Sparkles className="w-3 h-3 md:w-4 md:h-4 text-amber-500 fill-amber-500" /> <span className="hidden min-[350px]:inline">Premium</span>
+            <div className={`backdrop-blur-md text-neutral-900 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 transition-opacity ${tag ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100 bg-white/30'}`}>
+              <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" /> Premium
             </div>
           )}
         </div>
-
-        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-3 right-3 md:top-5 md:right-5 p-2 md:p-3 bg-card/40 backdrop-blur-lg rounded-full text-texto hover:bg-card/70 transition-colors duration-300 z-30 shadow-sm">
-          <Heart className="w-3.5 h-3.5 md:w-5 md:h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-5 right-5 p-3 bg-card/30 backdrop-blur-lg rounded-full text-texto hover:bg-card/50 transition-colors duration-300 z-30 shadow-sm">
+          <Heart className="w-5 h-5 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
         </button>
-
-        {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 md:py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
-        
-        <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
-        <div className="absolute inset-x-0 bottom-0 h-[50%] md:h-[35%] pointer-events-none z-10 bg-gradient-to-t from-black/80 md:from-texto/30 via-black/40 md:via-card/20 to-transparent opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-        <div className="absolute inset-x-0 bottom-0 p-4 md:p-8 flex flex-col gap-1 md:gap-2 z-20 opacity-100 translate-y-0 md:opacity-0 md:translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
-          <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-white/80 md:text-texto-sec drop-shadow-md md:drop-shadow-sm">{product.get("category")}</span>
-          <h3 className="font-serif italic text-lg sm:text-2xl md:text-3xl text-white md:text-texto line-clamp-1 drop-shadow-md">{product.get("name")}</h3>
-          <div className="flex items-center gap-1.5 md:gap-2 mt-0.5 md:mt-1 pointer-events-auto drop-shadow-md md:drop-shadow-sm">
-            {promo.isActive ? (<><span className="text-[10px] md:text-sm line-through text-white/60 md:text-texto-sec pr-1">R$ {product.get("price").toFixed(2)}</span><span className="font-bold text-white md:text-texto text-base sm:text-xl md:text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-white md:text-texto text-base sm:text-xl md:text-2xl">R$ {product.get("price").toFixed(2)}</span>)}
+        {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
+        <div className="absolute inset-x-0 bottom-0 h-[65%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
+        <div className="absolute inset-x-0 bottom-0 h-[35%] pointer-events-none z-10 bg-gradient-to-t from-card/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+        <div className="absolute inset-x-0 bottom-0 p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500 pointer-events-none">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-texto-sec drop-shadow-sm">{product.get("category")}</span>
+          <h3 className="font-serif italic text-3xl text-texto line-clamp-1 drop-shadow-sm">{product.get("name")}</h3>
+          <div className="flex items-center gap-2 mt-1 pointer-events-auto drop-shadow-sm">
+            {promo.isActive ? (<><span className="text-sm line-through text-texto-sec pr-1">R$ {product.get("price").toFixed(2)}</span><span className="font-bold text-texto text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-texto text-2xl">R$ {product.get("price").toFixed(2)}</span>)}
           </div>
-          <button onClick={(e) => onAddToCart(product, e)} disabled={isOutOfStock} className="pointer-events-auto mt-2 md:mt-4 w-full h-10 md:h-14 text-xs md:text-base bg-white md:bg-texto text-black md:text-card font-bold rounded-lg md:rounded-2xl flex items-center justify-center hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 gap-1.5 md:gap-2 shadow-lg">
-            {isOutOfStock ? <X className="w-4 h-4 md:w-6 md:h-6" /> : <Plus className="w-4 h-4 md:w-6 md:h-6" />}
-            {isOutOfStock ? "Esgotado" : "Adicionar"}
+          <button onClick={(e) => onAddToCart(product, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-14 text-base bg-texto text-card font-bold rounded-2xl flex items-center justify-center hover:opacity-90 transition-opacity duration-300 disabled:opacity-50 gap-2 shadow-lg">
+            {isOutOfStock ? <X className="w-6 h-6" /> : <Plus className="w-6 h-6" />} {isOutOfStock ? "Esgotado" : "Adicionar à sacola"}
           </button>
         </div>
       </div>
@@ -71,52 +130,35 @@ const StandardProductCard = React.memo(({ product, config, isFav, promo, onOpenD
   );
 }, (prev, next) => prev.product.id === next.product.id && prev.isFav === next.isFav && prev.promo.isActive === next.promo.isActive && prev.config?.tag === next.config?.tag);
 
-// Card Promoção Blindado
 const PromoBannerCard = React.memo(({ product, isFav, promo, onOpenDetails, onToggleFav, onAddToCart }) => {
   const isOutOfStock = product.get("stock") <= 0;
   const hasDetails = product.get("hasDetails");
 
   return (
-    <div className="relative shrink-0 w-[70vw] max-w-[280px] sm:max-w-[340px] md:w-full md:max-w-[340px] snap-center pb-4 pt-4">
-      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group/card relative aspect-[3/4] w-full overflow-hidden rounded-[20px] md:rounded-[32px] bg-black transition-all duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer hover:shadow-white/5' : ''}`}>
+    <div className="relative shrink-0 w-[340px] snap-center pb-4 pt-4">
+      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group/card relative aspect-[3/4] w-full overflow-hidden rounded-[32px] bg-black transition-all duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer hover:shadow-white/5' : ''}`}>
         <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
-        
-        <div className="absolute top-3 left-3 md:top-5 md:left-5 flex flex-col gap-2 z-30 pointer-events-none">
+        <div className="absolute top-5 left-5 flex flex-col gap-2 z-30 pointer-events-none">
           {!isOutOfStock && (
-            <div className="bg-black/80 backdrop-blur-md text-white text-[9px] md:text-xs font-bold px-2.5 py-1 md:px-4 md:py-2 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1.5 whitespace-nowrap">
-              <Timer className="w-3 h-3 md:w-4 md:h-4" />
-              <PromoTimer endsAt={promo.endsAt} />
+            <div className="bg-black/80 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1.5 whitespace-nowrap">
+              <Timer className="w-4 h-4" /> <PromoTimer endsAt={promo.endsAt} />
             </div>
           )}
         </div>
-
-        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-3 right-3 md:top-5 md:right-5 p-2 md:p-3 bg-white/30 backdrop-blur-lg rounded-full text-texto hover:bg-white/50 transition-colors duration-300 z-30 shadow-sm border border-white/10">
-          <Heart className="w-3.5 h-3.5 md:w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-5 right-5 p-3 bg-white/30 backdrop-blur-lg rounded-full text-texto hover:bg-white/50 transition-colors duration-300 z-30 shadow-sm border border-white/10">
+          <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
         </button>
-
-        {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-[10px] md:text-xs font-bold px-3 py-1.5 md:px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
-
-        <div className="absolute inset-x-0 bottom-0 h-[70%] pointer-events-none z-10 backdrop-blur-sm opacity-100 md:opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
-        <div className="absolute inset-x-0 bottom-0 h-[50%] pointer-events-none z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-100 md:opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
-
-        <div className="absolute inset-x-0 bottom-0 p-4 md:p-8 flex flex-col gap-1 md:gap-2 z-20 opacity-100 translate-y-0 md:opacity-0 md:translate-y-6 group-hover/card:translate-y-0 group-hover/card:opacity-100 transition-all duration-500 pointer-events-none">
-          <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-white/70 drop-shadow-sm">{product.get("category")}</span>
-          <h3 className="font-serif italic text-lg sm:text-2xl md:text-3xl text-white line-clamp-1 drop-shadow-md">{product.get("name")}</h3>
-          
-          <div className="flex items-center gap-1.5 md:gap-2 mt-0.5 md:mt-1 pointer-events-auto drop-shadow-sm">
-            {promo.isActive ? (
-              <>
-                <span className="text-[10px] md:text-sm line-through text-white/60 pr-1">R$ {product.get("price").toFixed(2)}</span>
-                <span className="font-bold text-white text-base sm:text-xl md:text-2xl">R$ {promo.price.toFixed(2)}</span>
-              </>
-            ) : (
-              <span className="font-bold text-white text-base sm:text-xl md:text-2xl">R$ {product.get("price").toFixed(2)}</span>
-            )}
+        {isOutOfStock && <div className="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-30"><span className="bg-card text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-lg">Esgotado</span></div>}
+        <div className="absolute inset-x-0 bottom-0 h-[70%] pointer-events-none z-10 backdrop-blur-sm opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 rounded-[32px]" style={{ maskImage: 'linear-gradient(to top, black 40%, transparent 100%)', WebkitMaskImage: 'linear-gradient(to top, black 50%, transparent 100%)' }} />
+        <div className="absolute inset-x-0 bottom-0 h-[45%] pointer-events-none z-10 bg-gradient-to-t from-black/90 via-black/50 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-500 rounded-[32px]" />
+        <div className="absolute inset-x-0 bottom-0 p-8 flex flex-col gap-2 z-20 opacity-0 translate-y-6 group-hover/card:translate-y-0 group-hover/card:opacity-100 transition-all duration-500 pointer-events-none rounded-[32px]">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-white/70 drop-shadow-sm">{product.get("category")}</span>
+          <h3 className="font-serif italic text-3xl text-white line-clamp-1 drop-shadow-sm">{product.get("name")}</h3>
+          <div className="flex items-center gap-2 mt-1 pointer-events-auto drop-shadow-sm">
+            {promo.isActive ? (<><span className="text-sm line-through text-white/60 pr-1">R$ {product.get("price").toFixed(2)}</span><span className="font-bold text-white text-2xl">R$ {promo.price.toFixed(2)}</span></>) : (<span className="font-bold text-white text-2xl">R$ {product.get("price").toFixed(2)}</span>)}
           </div>
-          
-          <button onClick={(e) => onAddToCart(product, e)} disabled={isOutOfStock} className="pointer-events-auto mt-2 md:mt-4 w-full h-10 md:h-14 text-xs md:text-base bg-white text-black font-bold rounded-lg md:rounded-2xl flex items-center justify-center hover:bg-neutral-200 transition-colors duration-300 disabled:opacity-50 gap-1.5 md:gap-2 shadow-lg">
-            {isOutOfStock ? <X className="w-4 h-4 md:w-6 md:h-6" /> : <Plus className="w-4 h-4 md:w-6 md:h-6" />}
-            {isOutOfStock ? "Esgotado" : "Adicionar"}
+          <button onClick={(e) => onAddToCart(product, e)} disabled={isOutOfStock} className="pointer-events-auto mt-4 w-full h-14 text-base bg-white text-black font-bold rounded-2xl flex items-center justify-center hover:bg-neutral-200 transition-colors duration-300 disabled:opacity-50 gap-2 shadow-lg">
+            {isOutOfStock ? <X className="w-6 h-6" /> : <Plus className="w-6 h-6" />} {isOutOfStock ? "Esgotado" : "Adicionar à sacola"}
           </button>
         </div>
       </div>
@@ -124,67 +166,43 @@ const PromoBannerCard = React.memo(({ product, isFav, promo, onOpenDetails, onTo
   );
 }, (prev, next) => prev.product.id === next.product.id && prev.isFav === next.isFav && prev.promo.isActive === next.promo.isActive);
 
-// Card de Listagem (Catálogo) Blindado
 const CatalogProductCard = React.memo(({ product, isFav, promo, onOpenDetails, onToggleFav, onAddToCart }) => {
   const isOutOfStock = product.get("stock") <= 0;
   const variants = product.get("variants") || [];
   const hasDetails = product.get("hasDetails");
   
   return (
-    <div className="group relative flex flex-row min-[400px]:flex-col h-full bg-card min-[400px]:bg-transparent rounded-2xl min-[400px]:rounded-none p-3 min-[400px]:p-0 border border-borda min-[400px]:border-transparent shadow-sm min-[400px]:shadow-none gap-3 md:gap-4 min-[400px]:gap-0">
-      
-      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-[90px] min-[400px]:w-full shrink-0 aspect-[4/5] overflow-hidden rounded-xl min-[400px]:rounded-[16px] md:rounded-[24px] bg-card min-[400px]:mb-3 md:mb-4 relative border border-transparent hover:border-borda transition-colors ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+    <div className="group relative flex flex-col h-full bg-transparent p-0 shadow-none gap-0">
+      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-full shrink-0 aspect-[4/5] overflow-hidden rounded-[24px] bg-card mb-4 relative border border-transparent hover:border-borda transition-colors ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
         <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />
-        
-        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-2 right-2 md:top-4 md:right-4 p-1.5 md:p-2.5 bg-card/40 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
-          <Heart className="w-3.5 h-3.5 md:w-4 md:h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+        <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-4 right-4 p-2.5 bg-card/30 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
+          <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
         </button>
-
-        {isOutOfStock && <div className="absolute top-2 left-2 md:top-4 md:left-4 bg-card/90 backdrop-blur-sm text-texto text-[8px] md:text-[10px] font-bold px-1.5 py-0.5 md:px-3 md:py-1.5 rounded-md uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
-        
+        {isOutOfStock && <div className="absolute top-4 left-4 bg-card/90 backdrop-blur-sm text-texto text-[10px] font-bold px-3 py-1.5 rounded-full uppercase tracking-wider shadow-sm z-20">Esgotado</div>}
         {hasDetails && !isOutOfStock && !promo.isActive && (
-          <div className="absolute top-2 left-2 md:top-4 md:left-4 backdrop-blur-md text-neutral-900 text-[8px] md:text-[10px] font-bold px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-100 min-[400px]:opacity-0 min-[400px]:group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
-            <Sparkles className="w-2.5 h-2.5 md:w-3 md:h-3 text-amber-500 fill-amber-500" /> <span className="hidden min-[400px]:inline">Premium</span>
+          <div className="absolute top-4 left-4 backdrop-blur-md text-neutral-900 text-[10px] font-bold px-2.5 py-1 rounded-md uppercase tracking-wider shadow-sm flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-20 pointer-events-none">
+            <Sparkles className="w-3 h-3 text-amber-500 fill-amber-500" /> <span>Premium</span>
           </div>
         )}
-        
         {!isOutOfStock && (
-          <div className="hidden sm:block absolute bottom-3 left-3 right-3 md:bottom-4 md:left-4 md:right-4 translate-y-[120%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-auto">
-            <button onClick={(e) => onAddToCart(product, e)} className="w-full bg-btn text-btn-texto font-bold py-3 md:py-4 text-sm md:text-base rounded-xl shadow-lg hover:opacity-90 transition-opacity duration-300 flex items-center justify-center gap-2">
-              <Plus className="w-4 h-4 md:w-5 md:h-5" /> Adicionar
+          <div className="absolute bottom-4 left-4 right-4 translate-y-[120%] opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300 z-10 pointer-events-auto">
+            <button onClick={(e) => onAddToCart(product, e)} className="w-full bg-btn text-btn-texto font-bold py-4 text-base rounded-xl shadow-lg hover:opacity-90 transition-opacity duration-300 flex items-center justify-center gap-2">
+              <Plus className="w-5 h-5" /> Adicionar à sacola
             </button>
           </div>
         )}
       </div>
-      
-      <div className="flex flex-col flex-1 py-0.5 min-[400px]:py-0 justify-between">
-        <div>
-          <h3 className="font-medium text-xs sm:text-sm md:text-base text-texto line-clamp-2 mb-1 min-[400px]:mb-0 leading-tight">{product.get("name")}</h3>
-          {variants.length > 0 && <span className="text-[8px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 py-0.5 rounded-md inline-block min-[400px]:hidden mb-1">{variants.length} Cores</span>}
-        </div>
-        
-        <div className="flex flex-col min-[400px]:flex-row min-[400px]:justify-between min-[400px]:items-end mt-auto min-[400px]:mt-1">
+      <div className="flex flex-col flex-1 justify-between">
+        <div><h3 className="font-medium text-base text-texto line-clamp-2 leading-tight">{product.get("name")}</h3></div>
+        <div className="flex justify-between items-end mt-1">
           {promo.isActive ? (
-            <div className="flex flex-col">
-              <span className="text-[9px] md:text-xs line-through text-texto-sec">R$ {product.get("price").toFixed(2)}</span>
-              <span className="text-texto font-bold text-sm md:text-base">R$ {promo.price.toFixed(2)}</span>
-            </div>
+            <div className="flex flex-col"><span className="text-xs line-through text-texto-sec">R$ {product.get("price").toFixed(2)}</span><span className="text-texto font-bold text-base">R$ {promo.price.toFixed(2)}</span></div>
           ) : (
-            <p className="text-texto-sec text-xs sm:text-sm md:text-base font-bold min-[400px]:font-normal text-texto min-[400px]:text-texto-sec">R$ {product.get("price").toFixed(2)}</p>
+            <p className="text-base font-normal text-texto-sec">R$ {product.get("price").toFixed(2)}</p>
           )}
-          {variants.length > 0 && <span className="hidden min-[400px]:inline-block text-[8px] md:text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-1.5 md:px-2 py-0.5 rounded-md shrink-0">{variants.length} Cores</span>}
+          {variants.length > 0 && <span className="inline-block text-[10px] uppercase font-bold text-texto-sec bg-fundo border border-borda px-2 py-0.5 rounded-md shrink-0">{variants.length} Cores</span>}
         </div>
-
-        {!isOutOfStock ? (
-          <button onClick={(e) => onAddToCart(product, e)} className="sm:hidden mt-2 w-full bg-texto text-card font-bold py-2 text-[10px] rounded-lg flex items-center justify-center gap-1 active:scale-95 transition-transform shadow-sm">
-            <Plus className="w-3 h-3" /> Adicionar
-          </button>
-        ) : (
-          <div className="sm:hidden mt-2 w-full bg-fundo text-texto-sec font-bold py-2 text-[10px] rounded-lg flex items-center justify-center border border-borda">
-            Esgotado
-          </div>
-        )}
       </div>
     </div>
   );
@@ -220,7 +238,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
   const [currentView, setCurrentView] = useState("store"); 
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [profileTab, setProfileTab] = useState("data"); 
   const [orders, setOrders] = useState([]);
   
@@ -232,7 +249,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [detailedQuantity, setDetailedQuantity] = useState(1);
 
-  // Shop the Look
   const [lookConfig, setLookConfig] = useState(null);
   const [selectedLookItem, setSelectedLookItem] = useState(null);
 
@@ -272,7 +288,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
     }
   }, []);
 
-  // Parallax Shop the Look
   const shopTheLookRef = useRef(null);
   const { scrollYProgress: lookScrollProgress } = useScroll({ target: shopTheLookRef, offset: ["start end", "end start"] });
   const lookY = useTransform(lookScrollProgress, [0, 0.35, 0.65, 1], ["20%", "0%", "0%", "-30%"]);
@@ -305,7 +320,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
   const scrollPromo = useCallback((direction) => {
     if (promoScrollRef.current) {
-      const scrollAmount = window.innerWidth > 768 ? 340 : 250; 
+      const scrollAmount = 340; 
       promoScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
     }
   }, []);
@@ -660,7 +675,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   const thirdBannerBtnLink = storeSettings?.get("thirdBannerBtnLink") || "#";
   const thirdBannerImageUrl = storeSettings?.get("thirdBannerImageUrl") || "";
 
-  // MOTOR INTELIGENTE DO BANNER
   useEffect(() => {
     if (bannersArray.length <= 1) return;
     let interval;
@@ -705,24 +719,21 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           
           {currentView === "store" && (
             <div className="hidden md:flex flex-[2] justify-center items-center">
-              <motion.div initial={false} animate={{ width: isSearchExpanded ? "100%" : "44px", maxWidth: isSearchExpanded ? "600px" : "44px" }} transition={{ type: "spring", bounce: 0, duration: 0.6 }} className={`relative flex items-center h-10 md:h-11 rounded-full overflow-hidden transition-colors duration-300 ${isSearchExpanded ? 'bg-texto text-card shadow-md' : 'bg-transparent hover:bg-texto/5'}`}>
+              <div className={`relative flex items-center h-10 md:h-11 rounded-full overflow-hidden transition-colors duration-300 ${isSearchExpanded ? 'bg-texto text-card shadow-md w-full max-w-[600px]' : 'bg-transparent hover:bg-texto/5 w-[44px]'}`}>
                 <button onClick={() => setIsSearchExpanded(true)} className={`absolute left-0 z-10 w-10 md:w-11 h-10 md:h-11 flex items-center justify-center transition-colors duration-300 ${isSearchExpanded ? 'text-card cursor-default pointer-events-none' : 'text-texto'}`}><Search className="w-4 h-4 md:w-5 md:h-5" /></button>
                 <input type="text" placeholder="O que você está procurando?" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full h-full bg-transparent border-none py-2 pl-10 md:pl-12 pr-10 md:pr-12 focus:outline-none text-sm md:text-base transition-opacity duration-300 ${isSearchExpanded ? 'opacity-100 text-card placeholder:text-card/70' : 'opacity-0 cursor-pointer'}`} style={{ pointerEvents: isSearchExpanded ? 'auto' : 'none' }} />
-                <AnimatePresence>
-                  {isSearchExpanded && (<motion.button initial={{ opacity: 0, scale: 0.5, rotate: -45 }} animate={{ opacity: 1, scale: 1, rotate: 0 }} exit={{ opacity: 0, scale: 0.5, rotate: 45 }} transition={{ duration: 0.3 }} onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }} className="absolute right-0 z-10 w-10 md:w-11 h-10 md:h-11 flex items-center justify-center text-card/70 hover:text-card hover:bg-card/10 rounded-full transition-colors"><X className="w-4 h-4" /></motion.button>)}
-                </AnimatePresence>
-              </motion.div>
+                {isSearchExpanded && (<button onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }} className="absolute right-0 z-10 w-10 md:w-11 h-10 md:h-11 flex items-center justify-center text-card/70 hover:text-card hover:bg-card/10 rounded-full transition-colors"><X className="w-4 h-4" /></button>)}
+              </div>
             </div>
           )}
 
           <div className="flex-1 flex justify-end items-center gap-2 md:gap-4 text-texto-sec relative z-20">
-            {/* Escondido no Mobile, Fica dentro do Perfil agora */}
-            <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2 rounded-full text-texto-sec hover:text-texto hover:bg-texto/5 transition-colors hidden md:block">
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </button>
-
             {/* Ícones Exclusivos do Desktop */}
             <div className="hidden md:flex items-center gap-2">
+              <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-full text-texto-sec hover:text-texto hover:bg-texto/5 transition-colors">
+                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              </button>
+
               <button onClick={() => setCurrentView("cart")} className={`p-2.5 rounded-full transition-colors relative ${currentView === "cart" ? "bg-texto text-card" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}>
                 <ShoppingBag className="w-5 h-5" />
                 {cartItemsCount > 0 && (<span className={`absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 ${currentView === "cart" ? "bg-card border-texto" : "bg-texto border-fundo"}`} />)}
@@ -778,14 +789,15 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           </div>
         </div>
 
-        {/* Barra de Busca Expansível Exclusiva do Mobile */}
+        {/* Barra de Busca Exclusiva do Mobile - Agora Absoluta e sem bugar a tela */}
         <AnimatePresence>
           {isSearchExpanded && currentView === "store" && (
             <motion.div 
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="md:hidden w-full bg-fundo border-b border-borda px-4 py-3 shadow-sm"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.2 }}
+              className="md:hidden absolute top-full left-0 w-full bg-fundo border-b border-borda px-4 py-3 shadow-md z-40"
             >
               <div className="relative flex items-center bg-card rounded-full h-11 px-3 border border-borda">
                 <Search className="w-4 h-4 text-texto-sec" />
@@ -805,7 +817,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       </header>
 
       {/* ==============================================================================
-          👇 NAVIGATION BAR INFERIOR MÓVEL TIPO APP 👇
+          👇 NAVIGATION BAR INFERIOR FLUTUANTE (MOBILE) 👇
           ============================================================================== */}
       {!detailedProduct && (
         <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-fundo/95 backdrop-blur-xl border border-borda rounded-2xl z-[100] flex justify-around items-center h-16 px-2 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
@@ -842,11 +854,11 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           {currentView === "store" && (
             <motion.main 
               key="view-store"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 mt-4 md:mt-0 space-y-8 md:space-y-16 mb-24 md:mb-20"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 mt-4 md:mt-0 space-y-6 md:space-y-16 mb-24 md:mb-20"
             >
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center min-h-[60vh]">
@@ -868,13 +880,25 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                 <>
                   {searchQuery ? (
                     <section className="pt-4">
-                      <h2 className="text-xl md:text-2xl font-medium mb-6 text-texto">Resultados para "{searchQuery}"</h2>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3 md:gap-8">
+                      <h2 className="text-xl md:text-2xl font-medium mb-4 md:mb-6 text-texto">Resultados para "{searchQuery}"</h2>
+                      
+                      {/* Mobile Grid */}
+                      <div className="grid grid-cols-2 gap-3 md:hidden">
+                        {searchResults.map((p, idx) => (
+                           <div key={p.id} className={searchResults.length % 2 !== 0 && idx === 0 ? "col-span-2" : "col-span-1"}>
+                             <MobileProductCard product={p} isFullRow={searchResults.length % 2 !== 0 && idx === 0} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                           </div>
+                        ))}
+                      </div>
+
+                      {/* Desktop Grid */}
+                      <div className="hidden md:grid md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-8">
                         {searchResults.map(p => (
                           <StandardProductCard key={p.id} product={p} config={{}} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                         ))}
-                        {searchResults.length === 0 && <p className="text-texto-sec col-span-full">Nenhum produto encontrado.</p>}
                       </div>
+
+                      {searchResults.length === 0 && <p className="text-texto-sec col-span-full">Nenhum produto encontrado.</p>}
                     </section>
                   ) : (
                     <>
@@ -926,9 +950,20 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                             <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-btn text-btn-texto flex items-center justify-center"><Sparkles className="w-3 h-3 md:w-4 md:h-4" /></div>
                             <h2 className="text-xl md:text-2xl font-medium text-texto">Lançamentos</h2>
                           </div>
-                          <div className="flex overflow-x-auto gap-3 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-6 md:pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-2 lg:grid-cols-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                          
+                          {/* Mobile Grid */}
+                          <div className="md:hidden grid grid-cols-2 gap-3">
+                            {newArrivals.map((p, idx) => (
+                               <div key={p.id} className={newArrivals.length % 2 !== 0 && idx === 0 ? "col-span-2" : "col-span-1"}>
+                                 <MobileProductCard product={p} isFullRow={newArrivals.length % 2 !== 0 && idx === 0} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                               </div>
+                            ))}
+                          </div>
+
+                          {/* Desktop Slider */}
+                          <div className="hidden md:flex overflow-x-auto gap-8 snap-x snap-mandatory scrollbar-hide pb-2 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                             {newArrivals.map(p => (
-                              <StandardProductCard key={p.id} product={p} config={{ tag: "Novo", wrapClass: "w-[70vw] max-w-[240px] sm:max-w-[340px] md:w-full md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                              <StandardProductCard key={p.id} product={p} config={{ tag: "Novo", wrapClass: "w-[340px] md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                             ))}
                           </div>
                         </section>
@@ -975,7 +1010,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                               ============================================================================== */}
                           <div className="md:hidden flex flex-col relative z-10">
                             {/* Bannerzinho Escuro Acima do Grid */}
-                            <div className="relative w-full rounded-2xl overflow-hidden bg-texto p-6 mb-6 shadow-sm">
+                            <div className="relative w-full rounded-2xl overflow-hidden bg-texto p-6 mb-4 shadow-sm">
                               {promoBannerImageUrl && <img className="absolute inset-0 w-full h-full object-cover opacity-50" src={promoBannerImageUrl} alt="Ofertas" />}
                               <div className="absolute inset-0 bg-gradient-to-r from-black/95 to-black/40"></div>
                               <div className="relative z-10 text-left">
@@ -988,10 +1023,12 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                               </div>
                             </div>
                             
-                            {/* O Grid de Produtos Promo (Igual ao Catálogo) */}
-                            <div className="grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
-                              {promoProducts.map(p => (
-                                <CatalogProductCard key={p.id} product={p} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                            {/* O Grid de Produtos Promo (Matemática Par/Ímpar) */}
+                            <div className="grid grid-cols-2 gap-3">
+                              {promoProducts.map((p, idx) => (
+                                <div key={p.id} className={promoProducts.length % 2 !== 0 && idx === 0 ? "col-span-2" : "col-span-1"}>
+                                  <MobileProductCard product={p} isFullRow={promoProducts.length % 2 !== 0 && idx === 0} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                                </div>
                               ))}
                             </div>
                           </div>
@@ -1005,9 +1042,22 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                           <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-btn text-btn-texto flex items-center justify-center"><TrendingUp className="w-3 h-3 md:w-4 md:h-4" /></div>
                           <h2 className="text-xl md:text-2xl font-medium text-texto">Mais Desejados</h2>
                         </div>
-                        <div className="flex overflow-x-auto gap-3 md:gap-8 snap-x snap-mandatory scrollbar-hide pb-6 md:pb-10 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+
+                        {/* Mobile Grid */}
+                        {bestSellers.length > 0 ? (
+                          <div className="md:hidden grid grid-cols-2 gap-3">
+                            {bestSellers.map((p, idx) => (
+                               <div key={p.id} className={bestSellers.length % 2 !== 0 && idx === 0 ? "col-span-2" : "col-span-1"}>
+                                 <MobileProductCard product={p} isFullRow={bestSellers.length % 2 !== 0 && idx === 0} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                               </div>
+                            ))}
+                          </div>
+                        ) : <p className="text-texto-sec col-span-full md:hidden">Sem dados de vendas.</p>}
+
+                        {/* Desktop Slider */}
+                        <div className="hidden md:flex overflow-x-auto gap-8 snap-x snap-mandatory scrollbar-hide pb-10 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                           {bestSellers.length > 0 ? bestSellers.map(p => (
-                            <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-[70vw] max-w-[240px] sm:max-w-[320px] md:w-full md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                            <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-[320px] md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                           )) : <p className="text-texto-sec col-span-full">Sem dados de vendas.</p>}
                         </div>
                       </section>
@@ -1015,7 +1065,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                       {infoBannerActive && (
                         <section className="mt-8 md:mt-24 mb-4">
                           
-                          {/* 👇 BANNER SECUNDÁRIO OTIMIZADO 👇 */}
+                          {/* 👇 BANNER SECUNDÁRIO 👇 */}
                           <div className="relative w-full h-[20vh] min-h-[160px] md:h-[50vh] shadow-sm group bg-texto rounded-[20px] md:rounded-[32px]">
                             
                             {infoBannerImageUrl && /\.(mp4|webm|ogg|mov)$/i.test(infoBannerImageUrl) ? (
@@ -1036,7 +1086,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                               />
                             ) : null}
                             
-                            {/* Película escura com rounded direto nela */}
                             <div className="absolute inset-0 bg-black/40 z-10 pointer-events-none rounded-[20px] md:rounded-[32px]"></div>
                             
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 z-20">
@@ -1052,38 +1101,28 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
                           {infoBannerProducts.length > 0 && (
                             <>
-                              {/* =========================================================
-                                  LAYOUT MOBILE (md:hidden): Cartões de Catálogo Limpos
-                                  ========================================================= */}
-                              <div className="mt-6 md:hidden grid grid-cols-1 min-[400px]:grid-cols-2 gap-3">
-                                {infoBannerProducts.map(p => (
-                                  <CatalogProductCard 
-                                    key={p.id} 
-                                    product={p} 
-                                    isFav={favorites.includes(p.id)} 
-                                    promo={getActivePromo(p)} 
-                                    onOpenDetails={openProductDetails} 
-                                    onToggleFav={toggleFavorite} 
-                                    onAddToCart={handleAddToCartClick} 
-                                  />
+                              {/* MOBILE GRID (Matemática Par/Ímpar) */}
+                              <div className="mt-6 md:hidden grid grid-cols-2 gap-3">
+                                {infoBannerProducts.map((p, idx) => (
+                                   <div key={p.id} className={infoBannerProducts.length % 2 !== 0 && idx === 0 ? "col-span-2" : "col-span-1"}>
+                                     <MobileProductCard product={p} isFullRow={infoBannerProducts.length % 2 !== 0 && idx === 0} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                                   </div>
                                 ))}
                               </div>
 
-                              {/* =========================================================
-                                  LAYOUT DESKTOP (hidden md:block): Mosaico Dinâmico Antigo
-                                  ========================================================= */}
+                              {/* DESKTOP MOSAICO */}
                               <div className="hidden md:block mt-10">
                                 {infoBannerProducts.length === 6 || infoBannerProducts.length === 2 || infoBannerProducts.length === 3 ? (
-                                  <div className="flex flex-wrap gap-4 md:gap-6">
+                                  <div className="flex flex-wrap gap-6">
                                     {infoBannerProducts.map(p => (
-                                      <div key={p.id} className="flex-1 min-w-[150px] sm:min-w-[200px] md:min-w-[30%]">
-                                         <StandardProductCard product={p} config={{ aspectClass: "aspect-square md:aspect-[4/3]" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                                      <div key={p.id} className="flex-1 min-w-[30%]">
+                                         <StandardProductCard product={p} config={{ aspectClass: "md:aspect-[4/3]" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                                       </div>
                                     ))}
                                   </div>
 
                                 ) : infoBannerProducts.length === 4 || infoBannerProducts.length === 5 ? (
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                                  <div className="grid md:grid-cols-4 lg:grid-cols-5 gap-6">
                                     {infoBannerProducts.map(p => (
                                        <div key={p.id} className="w-full">
                                          <StandardProductCard product={p} config={{ aspectClass: "aspect-[3/4]" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
@@ -1093,17 +1132,17 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
                                 ) : (
                                   <>
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                                    <div className="grid md:grid-cols-4 lg:grid-cols-5 gap-6">
                                       {infoBannerProducts.slice(0, 5).map(p => (
                                          <div key={p.id} className="w-full"><StandardProductCard product={p} config={{ aspectClass: "aspect-[3/4]" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} /></div>
                                       ))}
                                     </div>
                                     
                                     {infoBannerProducts.length > 5 && (
-                                      <div className="flex flex-wrap gap-4 md:gap-6 mt-4 md:mt-6">
+                                      <div className="flex flex-wrap gap-6 mt-6">
                                         {infoBannerProducts.slice(5).map(p => (
-                                          <div key={p.id} className="flex-1 min-w-[150px] sm:min-w-[200px] md:min-w-[280px]">
-                                             <StandardProductCard product={p} config={{ aspectClass: "aspect-square md:aspect-[4/3]" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                                          <div key={p.id} className="flex-1 min-w-[280px]">
+                                             <StandardProductCard product={p} config={{ aspectClass: "md:aspect-[4/3]" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                                           </div>
                                         ))}
                                       </div>
@@ -1120,13 +1159,10 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                       {lookConfig && lookConfig.items.length > 0 && (
                         <section ref={shopTheLookRef} id="shop-the-look" className="relative h-[150vh] md:h-[180vh] mt-10 md:mt-20 mb-8 md:mb-16 border-t border-borda">
                           
-                          {/* 👇 CAIXA ÚNICA PEGAJOSA COM WILL-CHANGE PARA SALVAR A GPU 👇 */}
                           <motion.div 
                             style={{ y: lookY, opacity: lookOpacity }}
                             className="will-change-transform sticky top-16 md:top-15 w-full h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] flex flex-col justify-center overflow-hidden py-4 md:py-0"
                           >
-                              
-                            {/* TÍTULO DA SESSÃO */}
                             <div className="flex items-center gap-3 mb-6 md:mb-10 px-4 md:px-0">
                               <div className="w-8 h-8 rounded-full bg-texto text-card flex items-center justify-center"><Sparkles className="w-4 h-4" /></div>
                               <h2 className="text-2xl md:text-3xl font-serif italic text-texto">Shop the Look</h2>
@@ -1134,7 +1170,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
 
                             <div className="flex flex-col md:flex-row items-center gap-6 md:gap-16 lg:gap-24 mx-4 md:mx-0">
                               
-                              {/* === LADO ESQUERDO: INFORMAÇÕES === */}
                               <div className="w-full md:w-1/2 flex flex-col justify-center relative min-h-[220px] md:min-h-[300px] order-2 md:order-1">
                                 <AnimatePresence mode="wait">
                                   {selectedLookItem && (
@@ -1173,7 +1208,6 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                                 </AnimatePresence>
                               </div>
 
-                              {/* === LADO DIREITO: IMAGEM EDITORIAL RETANGULAR === */}
                               <div className="w-full md:w-1/2 max-w-[280px] md:max-w-md lg:max-w-lg aspect-[3/4] max-h-[40vh] md:max-h-none mx-auto relative order-1 md:order-2 rounded-[20px] md:rounded-[24px] overflow-hidden group shadow-md">
                                 <img src={lookConfig.imageUrl} alt="Shop the Look" loading="lazy" className="absolute inset-0 w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-1000" />
                                 <div className="absolute inset-0 bg-black/5 transition-colors group-hover:bg-black/10 pointer-events-none"></div>
@@ -1237,14 +1271,27 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                           <AnimatePresence mode="wait">
                             <motion.div 
                               key={`${selectedCategory}-${currentPage}`}
-                              initial={{ opacity: 0, x: 20 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -20 }}
-                              transition={{ duration: 0.4, ease: "easeOut" }}
-                              className="grid grid-cols-1 min-[400px]:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-3 sm:gap-4 md:gap-8"                        >
-                              {currentCatalogPageItems.map(p => (
-                                <CatalogProductCard key={p.id} product={p} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
-                              ))}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              {/* Mobile Grid */}
+                              <div className="grid grid-cols-2 gap-3 md:hidden">
+                                {currentCatalogPageItems.map((p, idx) => (
+                                   <div key={p.id} className={currentCatalogPageItems.length % 2 !== 0 && idx === 0 ? "col-span-2" : "col-span-1"}>
+                                     <MobileProductCard product={p} isFullRow={currentCatalogPageItems.length % 2 !== 0 && idx === 0} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                                   </div>
+                                ))}
+                              </div>
+
+                              {/* Desktop Grid */}
+                              <div className="hidden md:grid md:grid-cols-4 lg:grid-cols-5 2xl:grid-cols-6 gap-8">
+                                {currentCatalogPageItems.map(p => (
+                                  <CatalogProductCard key={p.id} product={p} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                                ))}
+                              </div>
+
                               {currentCatalogPageItems.length === 0 && <p className="text-texto-sec col-span-full text-center py-10">Nenhum produto nesta categoria.</p>}
                             </motion.div>
                           </AnimatePresence>
@@ -1343,11 +1390,11 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           {currentView === "profile" && (
              <motion.main 
              key="view-profile"
-             initial={{ opacity: 0, y: 15 }}
-             animate={{ opacity: 1, y: 0 }}
-             exit={{ opacity: 0, y: -15 }}
-             transition={{ duration: 0.4, ease: "easeInOut" }}
-             className={`mx-auto px-4 sm:px-6 md:px-12 mt-8 md:mt-12 mb-24 md:mb-20 ${profileTab === "favorites" ? "max-w-[1600px] lg:px-16" : "max-w-4xl"}`}
+             initial={{ opacity: 0 }}
+             animate={{ opacity: 1 }}
+             exit={{ opacity: 0 }}
+             transition={{ duration: 0.2 }}
+             className={`mx-auto px-4 sm:px-6 md:px-12 mt-4 md:mt-12 mb-24 md:mb-20 ${profileTab === "favorites" ? "max-w-[1600px] lg:px-16" : "max-w-4xl"}`}
            >
              <div className="bg-card rounded-2xl md:rounded-3xl shadow-sm border border-borda overflow-hidden min-h-[400px] md:min-h-[500px] flex flex-col transition-colors duration-500">
                <div className="flex border-b border-borda flex-nowrap overflow-x-auto scrollbar-hide shrink-0 bg-fundo">
@@ -1394,12 +1441,12 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                          </button>
                        </form>
 
-                       {/* 👇 BOTÕES DE AÇÃO (MOBILE FRIENDLY) 👇 */}
+                       {/* 👇 BOTÕES DE AÇÃO NO PERFIL (MOBILE FRIENDLY) 👇 */}
                        <div className="mt-8 pt-6 border-t border-borda flex justify-between items-center md:hidden">
-                         <button type="button" onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-fundo border border-borda rounded-xl text-texto-sec hover:text-texto transition-colors flex items-center gap-2 font-bold text-xs">
-                           {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />} {isDarkMode ? "Claro" : "Escuro"}
+                         <button type="button" onClick={() => setIsDarkMode(!isDarkMode)} className="p-3 bg-fundo border border-borda rounded-xl text-texto-sec hover:text-texto transition-colors flex items-center gap-2 font-bold text-xs shadow-sm">
+                           {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />} {isDarkMode ? "Modo Claro" : "Modo Escuro"}
                          </button>
-                         <button type="button" onClick={onLogout} className="text-red-500 font-bold text-xs flex items-center gap-1.5 p-3 bg-red-500/5 border border-red-500/10 rounded-xl hover:bg-red-500/10 transition-colors">
+                         <button type="button" onClick={onLogout} className="text-red-500 font-bold text-xs flex items-center gap-1.5 p-3 bg-red-500/5 border border-red-500/10 rounded-xl hover:bg-red-500/10 transition-colors shadow-sm">
                            <LogOut className="w-4 h-4"/> Sair da Conta
                          </button>
                        </div>
@@ -1455,9 +1502,20 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                          </div>
                        ) : (
                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-8">
-                           {favoriteProducts.map(p => (
-                             <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-[70vw] max-w-[240px] sm:max-w-[320px] md:w-full md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
-                           ))}
+                           {/* Mobile Grid */}
+                           <div className="md:hidden contents">
+                             {favoriteProducts.map((p, idx) => (
+                               <div key={p.id} className={favoriteProducts.length % 2 !== 0 && idx === 0 ? "col-span-2" : "col-span-1"}>
+                                 <MobileProductCard product={p} isFullRow={favoriteProducts.length % 2 !== 0 && idx === 0} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                               </div>
+                             ))}
+                           </div>
+                           {/* Desktop Grid */}
+                           <div className="hidden md:contents">
+                             {favoriteProducts.map(p => (
+                               <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-full" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                             ))}
+                           </div>
                          </div>
                        )}
                      </motion.div>
@@ -1471,11 +1529,11 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           {currentView === "cart" && (
             <motion.main
               key="view-cart"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={{ duration: 0.4, ease: "easeInOut" }}
-              className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 md:px-12 mt-6 md:mt-12 mb-24 md:mb-20"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="w-full max-w-[1200px] mx-auto px-4 sm:px-6 md:px-12 mt-4 md:mt-12 mb-24 md:mb-20"
             >
               <AnimatePresence mode="wait">
                 {checkoutStep === "processing" || checkoutStep === "success" ? (
@@ -1770,6 +1828,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                 </div>
               </div>
 
+              {/* 👇 AUMENTADO O PB-20 AQUI PARA O BOTÃO NÃO FICAR CORTADO NO MOBILE 👇 */}
               <div className="h-[55vh] md:h-full overflow-y-auto p-6 sm:p-10 lg:p-16 flex flex-col relative [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 <div>
                   <div className="mb-2 md:mb-3"><span className="text-[10px] md:text-xs font-bold tracking-widest text-texto-sec uppercase">{(detailedProduct.get("categories") || [detailedProduct.get("category")]).filter(Boolean).join(" , ") || "Premium"}</span></div>
@@ -1807,7 +1866,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                   )}
                 </div>
 
-                <div className="mt-auto pt-8 pb-28 md:pb-2 space-y-8">
+                <div className="mt-auto pt-8 pb-10 md:pb-2 space-y-8">
                   
                   <div className="border-t border-borda pt-8">
                     <h3 className="text-[11px] md:text-sm font-bold text-texto uppercase tracking-wider mb-4">Avaliações</h3>
