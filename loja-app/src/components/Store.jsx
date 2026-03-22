@@ -1067,7 +1067,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                           {/* 👇 CAIXA ÚNICA PEGAJOSA COM WILL-CHANGE PARA SALVAR A GPU 👇 */}
                           <motion.div 
                             style={{ y: lookY, opacity: lookOpacity }}
-                            className="will-change-transform sticky top-16 md:top-20 w-full h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] flex flex-col justify-center overflow-hidden py-4 md:py-0"
+                            className="will-change-transform sticky top-16 md:top-15 w-full h-[calc(100vh-4rem)] md:h-[calc(100vh-5rem)] flex flex-col justify-center overflow-hidden py-4 md:py-0"
                           >
                               
                             {/* TÍTULO DA SESSÃO */}
