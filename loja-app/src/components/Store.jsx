@@ -858,7 +858,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 mt-4 md:mt-0 space-y-6 md:space-y-16 mb-24 md:mb-20"
+              className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 mt-4 md:mt-0 space-y-6 md:space-y-16 mb-8 md:mb-10"
             >
               {isLoading ? (
                 <div className="flex flex-col items-center justify-center min-h-[60vh]">
