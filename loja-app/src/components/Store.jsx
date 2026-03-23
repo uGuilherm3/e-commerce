@@ -698,7 +698,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
       {/* ==============================================================================
           👇 CABEÇALHO OTIMIZADO PARA MOBILE E DESKTOP 👇
           ============================================================================== */}
-      <header className="bg-fundo/95 backdrop-blur-md transition-colors duration-500 sticky top-0 z-50 border-b border-borda md:border-none">
+      <header className="bg-fundo transition-colors duration-500 sticky top-0 z-50 md:border-none">
         <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-14 md:h-20 flex items-center justify-between gap-3 md:gap-4 relative">
           
           {/* Logo Centralizada no Mobile */}
