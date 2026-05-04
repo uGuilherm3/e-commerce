@@ -8,6 +8,37 @@ const DEFAULT_INFO_BANNER_IMG = "https://images.unsplash.com/photo-1445205170230
 const DEFAULT_CAROUSEL_IMG = "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop";
 const DEFAULT_PROMO_BANNER_IMG = ""; 
 
+const DEFAULT_LOGIN_SLIDES = [
+  {
+    imageUrl: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=2070&auto=format&fit=crop",
+    tag: "Acesso Exclusivo",
+    title: "Seja o primeiro.",
+    desc: "Membros cadastrados têm acesso antecipado a todos os nossos lançamentos e ofertas limitadas."
+  },
+  {
+    imageUrl: "https://images.unsplash.com/photo-1490481651871-ab68de25d43d?q=80&w=2070&auto=format&fit=crop",
+    tag: "Coleção Essência",
+    title: "Descubra o novo.",
+    desc: "Peças pensadas para iluminar o seu dia a dia com conforto e muita elegância em cada detalhe."
+  }
+];
+
+// 🛠️ FUNÇÕES DE AUXÍLIO PARA PREÇO (MÁSCARA PIX) 🛠️
+const maskPrice = (value) => {
+  if (!value) return "0,00";
+  const cleanValue = String(value).replace(/\D/g, "");
+  const options = { minimumFractionDigits: 2 };
+  const result = new Intl.NumberFormat("pt-BR", options).format(
+    parseFloat(cleanValue) / 100
+  );
+  return result;
+};
+
+const parsePrice = (formattedValue) => {
+  if (!formattedValue) return 0;
+  return Number(String(formattedValue).replace(/\./g, "").replace(",", "."));
+};
+
 export default function AdminPanel({ onBack }) {
   const [activeTab, setActiveTab] = useState("overview");
 
@@ -58,6 +89,9 @@ export default function AdminPanel({ onBack }) {
   const [promoBannerFile, setPromoBannerFile] = useState(null);
   const [currentPromoBannerUrl, setCurrentPromoBannerUrl] = useState(DEFAULT_PROMO_BANNER_IMG);
   const [linkPromoBannerUrl, setLinkPromoBannerUrl] = useState(""); 
+  
+  // Carrossel do Login
+  const [loginBanners, setLoginBanners] = useState([]);
 
   // Shop the Look
   const [lookBannerFile, setLookBannerFile] = useState(null);
@@ -183,7 +217,18 @@ export default function AdminPanel({ onBack }) {
         setThirdBannerBtn(s.get("thirdBannerBtn") || "");
         setThirdBannerBtnLink(s.get("thirdBannerBtnLink") || "");
         setCurrentThirdBannerUrl(s.get("thirdBannerImageUrl") || "");
+        
+        // Puxando slides do Login (Com fallback para os padrões)
+        const savedLoginBanners = s.get("loginBanners");
+        if (savedLoginBanners && savedLoginBanners.length > 0) {
+          setLoginBanners(savedLoginBanners.map((b, i) => ({ ...b, id: `lb-${i}`, file: null, linkUrl: "" })));
+        } else {
+          setLoginBanners(DEFAULT_LOGIN_SLIDES.map((b, i) => ({ ...b, id: `lb-${i}`, file: null, linkUrl: "" })));
+        }
         // 👆 FIM DA BUSCA 👆
+      } else {
+        // Se não houver NENHUMA configuração ainda, carregar os padrões para o estado
+        setLoginBanners(DEFAULT_LOGIN_SLIDES.map((b, i) => ({ ...b, id: `lb-${i}`, file: null, linkUrl: "" })));
       }
     } catch (e) { console.error(e); }
   };
@@ -204,12 +249,17 @@ export default function AdminPanel({ onBack }) {
     setLoading(true);
     try {
       let p = editingId ? await new Parse.Query("Product").get(editingId) : new Parse.Object("Product");
-      p.set("name", name); p.set("price", Number(price)); p.set("stock", Number(stock));
+      p.set("name", name); 
+      p.set("price", parsePrice(price)); 
+      p.set("stock", Number(stock));
       p.set("categories", selectedCategories); p.set("category", selectedCategories[0]);
       p.set("variants", variantsList); p.set("hasDetails", hasDetails);
       p.set("isInfoBannerProduct", prodInfoBanner); 
 
-      if (discountPrice && discountEndsAt) { p.set("discountPrice", Number(discountPrice)); p.set("discountEndsAt", new Date(discountEndsAt)); }
+      if (discountPrice && discountEndsAt) { 
+        p.set("discountPrice", parsePrice(discountPrice)); 
+        p.set("discountEndsAt", new Date(discountEndsAt)); 
+      }
       else { p.unset("discountPrice"); p.unset("discountEndsAt"); }
 
       p.set("description", description);
@@ -233,9 +283,12 @@ export default function AdminPanel({ onBack }) {
   };
 
   const handleEditProduct = (p) => {
-    setName(p.get("name")); setPrice(p.get("price")); setStock(p.get("stock") || 0);
+    setName(p.get("name")); 
+    setPrice(maskPrice(p.get("price"))); 
+    setStock(p.get("stock") || 0);
     setSelectedCategories(p.get("categories") || [p.get("category")].filter(Boolean));
-    setVariantsList(p.get("variants") || []); setDiscountPrice(p.get("discountPrice") || "");
+    setVariantsList(p.get("variants") || []); 
+    setDiscountPrice(p.get("discountPrice") ? maskPrice(p.get("discountPrice")) : "");
     const d = p.get("discountEndsAt");
     if (d) { const off = new Date().getTimezoneOffset() * 60000; setDiscountEndsAt(new Date(d - off).toISOString().slice(0, 16)); }
     setHasDetails(p.get("hasDetails") || false); 
@@ -316,6 +369,16 @@ export default function AdminPanel({ onBack }) {
       } else if (!currentThirdBannerUrl && !linkThirdBannerUrl) {
         s.unset("thirdBannerImageUrl");
       }
+
+      // SALVANDO SLIDES DO LOGIN
+      const finalLoginBanners = [];
+      for (const b of loginBanners) {
+        let url = b.imageUrl;
+        if (b.file) { const f = new Parse.File("login_banner", b.file); await f.save(); url = f.url(); }
+        else if (b.linkUrl?.trim()) url = b.linkUrl.trim();
+        finalLoginBanners.push({ imageUrl: url, tag: b.tag, title: b.title, desc: b.desc });
+      }
+      s.set("loginBanners", finalLoginBanners);
       // 👆 FIM DO SALVAMENTO 👆
 
       await s.save(); alert("Aparência da loja atualizada!"); fetchSettings();
@@ -331,12 +394,12 @@ export default function AdminPanel({ onBack }) {
 
   return (
     <div className="min-h-screen bg-neutral-100 p-4 md:p-8 font-sans pb-32">
-      <div className="max-w-[1400px] mx-auto">
+      <div className="max-w-[1600px] mx-auto">
         <button onClick={onBack} className="flex items-center gap-2 mb-6 text-neutral-500 hover:text-neutral-900 font-medium transition-colors">
           <ArrowLeft className="w-5 h-5" /> Voltar para a Loja
         </button>
 
-        <div className="bg-white rounded-3xl shadow-xl overflow-hidden">
+        <div className="bg-white rounded-3xl border border-neutral-200 overflow-hidden">
           <div className="flex border-b border-neutral-100 bg-neutral-50 flex-wrap">
             <button onClick={() => setActiveTab("overview")} className={`flex-1 py-4 px-4 font-medium transition-colors ${activeTab === "overview" ? "text-neutral-900 bg-white border-b-2 border-neutral-900" : "text-neutral-500 hover:bg-white/50"}`}>📊 Visão Geral</button>
             <button onClick={() => setActiveTab("products")} className={`flex-1 py-4 px-4 font-medium transition-colors ${activeTab === "products" ? "text-neutral-900 bg-white border-b-2 border-neutral-900" : "text-neutral-500 hover:bg-white/50"}`}>📦 Gestão de Produtos</button>
@@ -486,7 +549,7 @@ export default function AdminPanel({ onBack }) {
                         {/* DADOS BÁSICOS */}
                         <div className="flex flex-wrap gap-4">
                           <div className="flex-1 min-w-[200px]"><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Nome do Produto</label><input type="text" required value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none bg-white" /></div>
-                          <div className="w-32"><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Preço R$</label><input type="number" step="0.01" required value={price} onChange={(e) => setPrice(e.target.value)} className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none bg-white" /></div>
+                          <div className="w-40"><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Preço R$</label><input type="text" required value={price} onChange={(e) => setPrice(maskPrice(e.target.value))} className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none bg-white font-mono font-bold" /></div>
                           <div className="w-32"><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Estoque</label><input type="number" required value={stock} onChange={(e) => setStock(e.target.value)} className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none bg-white" /></div>
                         </div>
 
@@ -545,7 +608,7 @@ export default function AdminPanel({ onBack }) {
                         {/* OFERTA RELÂMPAGO */}
                         <div className="flex flex-wrap gap-4 p-4 border border-red-100 bg-red-50/50 rounded-lg">
                           <div className="w-full"><span className="text-xs font-bold text-red-500 uppercase">⚡ Oferta Relâmpago (Opcional)</span></div>
-                          <div className="w-40"><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Preço c/ Desconto</label><input type="number" step="0.01" value={discountPrice} onChange={(e) => setDiscountPrice(e.target.value)} className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white" placeholder="Ex: 49.90" /></div>
+                          <div className="w-40"><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Preço c/ Desconto</label><input type="text" value={discountPrice} onChange={(e) => setDiscountPrice(maskPrice(e.target.value))} className="w-full px-4 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-red-500 outline-none bg-white font-mono font-bold" placeholder="0,00" /></div>
                           <div className="flex-1 min-w-[200px]">
                             <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Válido até</label>
                             <div className="flex flex-col gap-2">
@@ -709,7 +772,7 @@ export default function AdminPanel({ onBack }) {
 
             {/* ABA 3: CONFIGURAÇÕES */}
             {activeTab === "settings" && (
-              <div className="max-w-4xl animate-in fade-in duration-500 pb-20">
+              <div className="w-full animate-in fade-in duration-500 pb-20">
                 <form onSubmit={handleSaveSettings} className="space-y-16">
                   <div>
                     <div className="flex justify-between items-center mb-6">
@@ -721,11 +784,11 @@ export default function AdminPanel({ onBack }) {
                         <Plus className="w-4 h-4" /> Adicionar Banner
                       </button>
                     </div>
-                    <div className="space-y-6">
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                       {banners.map((banner) => (
-                        <div key={banner.id} className="grid grid-cols-1 lg:grid-cols-2 gap-8 bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm relative">
+                        <div key={banner.id} className="grid grid-cols-1 lg:grid-cols-3 gap-8 bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm relative">
                             {banners.length > 1 && (<button type="button" onClick={() => setBanners(banners.filter(x => x.id !== banner.id))} className="absolute -top-3 -right-3 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition shadow-md z-10"><Trash2 className="w-4 h-4" /></button>)}
-                            <div className="w-full h-48 lg:h-full rounded-xl overflow-hidden relative shadow-inner border border-neutral-200 bg-neutral-900">
+                            <div className="w-full h-48 lg:h-full lg:col-span-1 rounded-xl overflow-hidden relative shadow-inner border border-neutral-200 bg-neutral-900">
                               <img src={banner.file ? URL.createObjectURL(banner.file) : (banner.linkUrl || banner.imageUrl)} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-60" onError={(e) => { e.target.src = DEFAULT_CAROUSEL_IMG; }}/>
                               <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
                                 <span className="text-white/80 uppercase tracking-widest text-[10px] font-medium mb-1 drop-shadow-sm">{banner.tag}</span>
@@ -733,7 +796,7 @@ export default function AdminPanel({ onBack }) {
                                 {banner.btn && <button type="button" className="px-4 py-1.5 bg-white text-neutral-900 text-xs font-bold rounded-full shadow-md">{banner.btn}</button>}
                               </div>
                             </div>
-                            <div className="space-y-4">
+                            <div className="lg:col-span-2 space-y-4">
                               <div className="grid grid-cols-2 gap-4">
                                 <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Tag</label><input type="text" value={banner.tag || ""} onChange={(e) => setBanners(banners.map(x => x.id === banner.id ? {...x, tag: e.target.value} : x))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none text-sm" /></div>
                                 <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título</label><input type="text" value={banner.title || ""} onChange={(e) => setBanners(banners.map(x => x.id === banner.id ? {...x, title: e.target.value} : x))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none text-sm" /></div>
@@ -756,51 +819,67 @@ export default function AdminPanel({ onBack }) {
                     </div>
                   </div>
 
-                  <div className="pt-10 border-t border-neutral-200">
-                    <div className="flex justify-between items-start mb-6">
-                      <div>
-                        <h2 className="text-2xl font-semibold mb-1 flex items-center gap-2">
-                          <Timer className="w-6 h-6 text-amber-500" /> Banner de Ofertas
-                        </h2>
-                        <p className="text-neutral-500 text-sm">Aparece automaticamente quando você cadastra produtos com "Preço Promocional".</p>
-                      </div>
-                    </div>
-                    
-                    <div className="w-full h-32 rounded-xl overflow-hidden relative shadow-sm border border-neutral-200 bg-neutral-900 mb-6">
-                      {(promoBannerFile || currentPromoBannerUrl || linkPromoBannerUrl) && (
-                        <img src={promoBannerFile ? URL.createObjectURL(promoBannerFile) : (linkPromoBannerUrl || currentPromoBannerUrl)} alt="Preview Ofertas" className="absolute inset-0 w-full h-full object-cover opacity-60" />
-                      )}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
-                        <h3 className="text-xl font-serif italic text-white mb-1">{promoBannerTitle || "Ofertas Especiais"}</h3>
-                        <p className="text-[10px] text-white/80">{promoBannerDesc || "Uma seleção exclusiva de peças..."}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm">
-                      <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título da Sessão</label>
-                        <input type="text" value={promoBannerTitle} onChange={(e) => setPromoBannerTitle(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none text-sm" placeholder="Ex: Ofertas Especiais" />
-                      </div>
-                      <div className="md:col-span-2">
-                        <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Descrição</label>
-                        <textarea value={promoBannerDesc} onChange={(e) => setPromoBannerDesc(e.target.value)} rows="2" className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none resize-none text-sm" placeholder="Ex: Uma seleção exclusiva..." />
-                      </div>
-                      <div className="md:col-span-2">
-                        <div className="flex justify-between items-end mb-1">
-                          <label className="block text-xs font-medium text-neutral-500 uppercase">Imagem de Fundo (Deixe vazio p/ cor do tema)</label>
-                          {(promoBannerFile || currentPromoBannerUrl || linkPromoBannerUrl) && (
-                            <button type="button" onClick={() => { setPromoBannerFile(null); setCurrentPromoBannerUrl(""); setLinkPromoBannerUrl(""); const fi = document.getElementById('promo-banner-file'); if (fi) fi.value = ""; }} className="flex items-center gap-1 text-[10px] text-red-500 hover:text-red-700 font-bold transition-colors uppercase tracking-wider bg-red-50 px-2 py-1 rounded-md"><Trash2 className="w-3 h-3" /> Remover Imagem</button>
-                          )}
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-16 pt-10 border-t border-neutral-200">
+                    {/* BANNER DE OFERTAS */}
+                    <div>
+                      <div className="flex justify-between items-start mb-6 h-[44px]"> {/* Altura fixa para simetria */}
+                        <div>
+                          <h2 className="text-2xl font-semibold mb-1 flex items-center gap-2">
+                            <Timer className="w-6 h-6 text-amber-500" /> Banner de Ofertas
+                          </h2>
+                          <p className="text-neutral-500 text-sm">Produtos com "Preço Promocional".</p>
                         </div>
-                        <div className="flex flex-col gap-2 p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
-                          <input id="promo-banner-file" type="file" accept="image/*" onChange={(e) => {setPromoBannerFile(e.target.files[0]); setCurrentPromoBannerUrl(""); setLinkPromoBannerUrl("");}} className="w-full text-xs" />
-                          <div className="flex items-center gap-2"><div className="flex-1 h-px bg-neutral-200"></div><span className="text-[10px] text-neutral-400 uppercase font-bold tracking-wider">OU LINK</span><div className="flex-1 h-px bg-neutral-200"></div></div>
-                          <input type="url" placeholder="https://..." value={linkPromoBannerUrl} onChange={(e) => {setLinkPromoBannerUrl(e.target.value); setPromoBannerFile(null);}} className="w-full px-3 py-2 text-sm bg-white border border-neutral-200 rounded-md outline-none" />
+                      </div>
+                      
+                      <div className="w-full h-32 rounded-xl overflow-hidden relative border border-neutral-200 bg-neutral-900 mb-6">
+                        {(promoBannerFile || currentPromoBannerUrl || linkPromoBannerUrl) && (
+                          <img src={promoBannerFile ? URL.createObjectURL(promoBannerFile) : (linkPromoBannerUrl || currentPromoBannerUrl)} alt="Preview Ofertas" className="absolute inset-0 w-full h-full object-cover opacity-60" />
+                        )}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                          <h3 className="text-xl font-serif italic text-white mb-1">{promoBannerTitle || "Ofertas Especiais"}</h3>
+                          <p className="text-[10px] text-white/80">{promoBannerDesc || "Uma seleção exclusiva de peças..."}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-4 bg-white p-6 rounded-2xl border border-neutral-200">
+                        <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título</label><input type="text" value={promoBannerTitle} onChange={(e) => setPromoBannerTitle(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
+                        <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Descrição</label><input type="text" value={promoBannerDesc} onChange={(e) => setPromoBannerDesc(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
+                        <div>
+                          <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Imagem</label>
+                          <div className="flex flex-col gap-2 p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                            <input type="file" accept="image/*" onChange={(e) => {setPromoBannerFile(e.target.files[0]); setCurrentPromoBannerUrl(""); setLinkPromoBannerUrl("");}} className="w-full text-xs" />
+                            <input type="url" placeholder="Ou link..." value={linkPromoBannerUrl} onChange={(e) => {setLinkPromoBannerUrl(e.target.value); setPromoBannerFile(null);}} className="w-full px-3 py-2 text-sm bg-white border border-neutral-200 rounded-md outline-none" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* BANNER SECUNDÁRIO */}
+                    <div>
+                      <div className="flex justify-between items-start mb-6 h-[44px]">
+                        <div><h2 className="text-2xl font-semibold mb-1 flex items-center gap-2"><ImageIcon className="w-6 h-6 text-neutral-400" /> Banner Secundário</h2><p className="text-neutral-500 text-sm">Campanhas ou frete.</p></div>
+                        <label className="relative inline-flex items-center cursor-pointer mt-1"><input type="checkbox" className="sr-only peer" checked={infoBannerActive} onChange={(e) => setInfoBannerActive(e.target.checked)} /><div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neutral-900"></div><span className="ml-3 text-sm font-bold text-neutral-900 uppercase whitespace-nowrap">Ativado</span></label>
+                      </div>
+                      <div className={`transition-opacity duration-300 ${!infoBannerActive && "opacity-40 pointer-events-none"}`}>
+                        <div className="w-full h-32 rounded-xl overflow-hidden relative border border-neutral-200 bg-neutral-900 mb-6">
+                          {currentInfoBannerUrl && <img src={infoBannerFile ? URL.createObjectURL(infoBannerFile) : currentInfoBannerUrl} alt="Preview Info" className="absolute inset-0 w-full h-full object-cover opacity-60" />}
+                          <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4"><h3 className="text-xl font-serif italic text-white mb-1">{infoBannerTitle}</h3><p className="text-[10px] text-white/80">{infoBannerDesc}</p></div>
+                        </div>
+                        <div className="space-y-4 bg-white p-6 rounded-2xl border border-neutral-200">
+                          <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título</label><input type="text" value={infoBannerTitle} onChange={(e) => setInfoBannerTitle(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
+                          <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Descrição</label><input type="text" value={infoBannerDesc} onChange={(e) => setInfoBannerDesc(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
+                          <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Imagem</label>
+                            <div className="flex flex-col gap-2 p-3 bg-neutral-50 border border-neutral-200 rounded-xl">
+                              <input type="file" accept="image/*" onChange={(e) => {setInfoBannerFile(e.target.files[0]); setCurrentInfoBannerUrl(""); setLinkInfoBannerUrl("");}} className="w-full text-xs" />
+                              <input type="url" placeholder="Ou link..." value={linkInfoBannerUrl} onChange={(e) => {setLinkInfoBannerUrl(e.target.value); setInfoBannerFile(null);}} className="w-full px-3 py-2 text-sm bg-white border border-neutral-200 rounded-md outline-none" />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
 
+                  {/* SHOP THE LOOK (100% de largura) */}
                   <div className="pt-10 border-t border-neutral-200">
                     <div className="flex justify-between items-start mb-6">
                       <div>
@@ -897,30 +976,6 @@ export default function AdminPanel({ onBack }) {
                     </div>
                   </div>
 
-                  <div className="pt-10 border-t border-neutral-200">
-                    <div className="flex justify-between items-start mb-2">
-                      <div><h2 className="text-2xl font-semibold mb-1 flex items-center gap-2"><ImageIcon className="w-6 h-6 text-neutral-400" /> Banner Secundário</h2><p className="text-neutral-500 text-sm">Aparece no meio da loja para informar campanhas, coleções ou frete.</p></div>
-                      <label className="relative inline-flex items-center cursor-pointer mt-1"><input type="checkbox" className="sr-only peer" checked={infoBannerActive} onChange={(e) => setInfoBannerActive(e.target.checked)} /><div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-neutral-900"></div><span className="ml-3 text-sm font-bold text-neutral-900 uppercase">Ativado</span></label>
-                    </div>
-                    <div className={`transition-opacity duration-300 mt-6 ${!infoBannerActive && "opacity-40 pointer-events-none"}`}>
-                      <div className="w-full h-32 rounded-xl overflow-hidden relative shadow-sm border border-neutral-200 bg-neutral-900 mb-6">
-                        {currentInfoBannerUrl && <img src={infoBannerFile ? URL.createObjectURL(infoBannerFile) : currentInfoBannerUrl} alt="Preview Info" className="absolute inset-0 w-full h-full object-cover opacity-60" />}
-                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4"><h3 className="text-xl font-serif italic text-white mb-1">{infoBannerTitle}</h3><p className="text-[10px] text-white/80">{infoBannerDesc}</p></div>
-                      </div>
-                      <div className="space-y-4">
-                        <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título Principal</label><input type="text" value={infoBannerTitle} onChange={(e) => setInfoBannerTitle(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
-                        <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Texto Menor</label><input type="text" value={infoBannerDesc} onChange={(e) => setInfoBannerDesc(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
-                        <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Texto do Botão</label><input type="text" value={infoBannerBtn} onChange={(e) => setInfoBannerBtn(e.target.value)} className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-neutral-900 outline-none" /></div>
-                        <div>
-                          <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Imagem de Fundo</label>
-                          <div className="flex flex-col gap-2 p-3 bg-white border border-neutral-200 rounded-xl">
-                            <input type="file" accept="image/*" onChange={(e) => {setInfoBannerFile(e.target.files[0]); setCurrentInfoBannerUrl(""); setLinkInfoBannerUrl("");}} className="w-full text-xs" />
-                            <input type="url" placeholder="Ou link..." value={linkInfoBannerUrl} onChange={(e) => {setLinkInfoBannerUrl(e.target.value); setInfoBannerFile(null);}} className="w-full px-3 py-2 text-sm bg-neutral-50 border border-neutral-200 rounded-md outline-none" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
 
                   {/* 👇 NOVA SESSÃO: BANNER TERCIÁRIO 👇 */}
                   <div className="pt-10 border-t border-neutral-200">
@@ -990,6 +1045,51 @@ export default function AdminPanel({ onBack }) {
                     </div>
                   </div>
                   {/* 👆 FIM DO BANNER TERCIÁRIO 👆 */}
+                  
+                  {/* 👇 NOVA SESSÃO: CARROSSEL DO LOGIN 👇 */}
+                  <div className="pt-10 border-t border-neutral-200">
+                    <div className="flex justify-between items-center mb-6">
+                      <div>
+                        <h2 className="text-2xl font-semibold flex items-center gap-2"><ImageIcon className="w-6 h-6 text-neutral-400" /> Carrossel da Página de Login</h2>
+                        <p className="text-neutral-500 text-sm">Essas imagens aparecem no lado esquerdo da tela de login/cadastro.</p>
+                      </div>
+                      <button type="button" onClick={() => setLoginBanners([...loginBanners, {id: Date.now().toString(), tag: 'Acesso Exclusivo', title: 'Novo Slide', desc: 'Descrição curta aqui...', imageUrl: DEFAULT_CAROUSEL_IMG}])} className="px-4 py-2 bg-neutral-900 text-white text-sm font-medium rounded-lg hover:bg-neutral-800 transition shadow-sm flex items-center gap-2">
+                        <Plus className="w-4 h-4" /> Adicionar Slide
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                      {loginBanners.map((slide) => (
+                        <div key={slide.id} className="grid grid-cols-1 lg:grid-cols-3 gap-8 bg-white p-6 rounded-2xl border border-neutral-200 shadow-sm relative">
+                            <button type="button" onClick={() => setLoginBanners(loginBanners.filter(x => x.id !== slide.id))} className="absolute -top-3 -right-3 bg-red-500 text-white p-1.5 rounded-full hover:bg-red-600 transition shadow-md z-10"><Trash2 className="w-4 h-4" /></button>
+                            
+                            <div className="w-full h-48 lg:h-full lg:col-span-1 rounded-xl overflow-hidden relative shadow-inner border border-neutral-200 bg-neutral-900">
+                              <img src={slide.file ? URL.createObjectURL(slide.file) : (slide.linkUrl || slide.imageUrl)} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-60" onError={(e) => { e.target.src = DEFAULT_CAROUSEL_IMG; }}/>
+                              <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4">
+                                <span className="text-white/80 uppercase tracking-widest text-[10px] font-medium mb-1 drop-shadow-sm">{slide.tag}</span>
+                                <h3 className="text-xl font-serif italic text-white mb-2 drop-shadow-md">{slide.title}</h3>
+                              </div>
+                            </div>
+
+                            <div className="lg:col-span-2 space-y-4">
+                              <div className="grid grid-cols-2 gap-4">
+                                <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Tag (Topo)</label><input type="text" value={slide.tag || ""} onChange={(e) => setLoginBanners(loginBanners.map(x => x.id === slide.id ? {...x, tag: e.target.value} : x))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none text-sm" /></div>
+                                <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Título</label><input type="text" value={slide.title || ""} onChange={(e) => setLoginBanners(loginBanners.map(x => x.id === slide.id ? {...x, title: e.target.value} : x))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none text-sm" /></div>
+                              </div>
+                              <div><label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Descrição</label><textarea rows="2" value={slide.desc || ""} onChange={(e) => setLoginBanners(loginBanners.map(x => x.id === slide.id ? {...x, desc: e.target.value} : x))} className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:ring-2 focus:ring-neutral-900 outline-none resize-none text-sm" /></div>
+                              <div>
+                                <label className="block text-xs font-medium text-neutral-500 uppercase mb-1">Fundo (Foto)</label>
+                                <div className="flex flex-col gap-2 p-2 bg-neutral-50 border border-neutral-200 rounded-lg">
+                                  <input type="file" accept="image/*" onChange={(e) => setLoginBanners(loginBanners.map(x => x.id === slide.id ? {...x, file: e.target.files[0], linkUrl: ""} : x))} className="w-full text-xs" />
+                                  <input type="url" placeholder="Ou link..." value={slide.linkUrl || ""} onChange={(e) => setLoginBanners(loginBanners.map(x => x.id === slide.id ? {...x, linkUrl: e.target.value, file: null} : x))} className="w-full px-3 py-1.5 text-xs bg-white border border-neutral-200 rounded-md outline-none" />
+                                </div>
+                              </div>
+                            </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* 👆 FIM DO CARROSSEL DO LOGIN 👆 */}
 
                   <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
                     <button type="submit" disabled={savingSettings} className="px-8 py-4 bg-neutral-900 text-white font-bold rounded-full hover:scale-105 transition-all shadow-2xl flex items-center gap-3">

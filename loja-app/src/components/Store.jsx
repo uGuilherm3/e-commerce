@@ -33,13 +33,13 @@ const MobileProductCard = React.memo(({ product, isFav, promo, onOpenDetails, on
   if (isFullRow) {
     return (
       <div className="flex flex-row h-[120px] bg-card rounded-2xl p-2.5 border border-borda shadow-sm gap-3">
-         <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-[90px] shrink-0 h-full rounded-xl overflow-hidden bg-fundo relative ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
-           <img src={product.get("imageUrl")} loading="lazy" className={`w-full h-full object-cover ${isOutOfStock ? "opacity-50 grayscale" : ""}`} alt={product.get("name")} />
-           <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-1.5 right-1.5 p-1.5 bg-card/60 backdrop-blur-md rounded-full text-texto shadow-sm">
-             <Heart className="w-3.5 h-3.5" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
-           </button>
-           {isOutOfStock && <div className="absolute top-1.5 left-1.5 bg-card/90 backdrop-blur-sm text-texto text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase shadow-sm">Esgotado</div>}
-         </div>
+          <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-[90px] shrink-0 h-full rounded-xl overflow-hidden bg-fundo relative p-2 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+            <img src={product.get("imageUrl")} loading="lazy" className={`w-full h-full object-contain ${isOutOfStock ? "opacity-50 grayscale" : ""}`} alt={product.get("name")} />
+            <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-1 right-1 p-1 bg-card/60 backdrop-blur-md rounded-full text-texto shadow-sm z-10">
+              <Heart className="w-3 h-3" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
+            </button>
+            {isOutOfStock && <div className="absolute top-1 left-1 bg-card/90 backdrop-blur-sm text-texto text-[7px] font-bold px-1.5 py-0.5 rounded-md uppercase shadow-sm z-10">Esgotado</div>}
+          </div>
          <div className="flex flex-col flex-1 py-0.5 justify-between min-w-0">
            <h3 className="font-medium text-sm text-texto line-clamp-2 leading-tight pr-1">{product.get("name")}</h3>
            <div className="mt-auto">
@@ -63,12 +63,12 @@ const MobileProductCard = React.memo(({ product, isFav, promo, onOpenDetails, on
 
   return (
     <div className="flex flex-col h-full bg-card rounded-2xl p-2 border border-borda shadow-sm gap-2">
-       <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-full aspect-[4/5] shrink-0 rounded-xl overflow-hidden bg-fundo relative ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
-         <img src={product.get("imageUrl")} loading="lazy" className={`w-full h-full object-cover ${isOutOfStock ? "opacity-50 grayscale" : ""}`} alt={product.get("name")} />
-         <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-2 right-2 p-1.5 bg-card/60 backdrop-blur-md rounded-full text-texto shadow-sm">
+       <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-full aspect-[4/5] shrink-0 rounded-xl overflow-hidden bg-fundo relative p-3 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+         <img src={product.get("imageUrl")} loading="lazy" className={`w-full h-full object-contain ${isOutOfStock ? "opacity-50 grayscale" : ""}`} alt={product.get("name")} />
+         <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-2 right-2 p-1.5 bg-card/60 backdrop-blur-md rounded-full text-texto shadow-sm z-10">
            <Heart className="w-3.5 h-3.5" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
          </button>
-         {isOutOfStock && <div className="absolute top-2 left-2 bg-card/90 backdrop-blur-sm text-texto text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase shadow-sm">Esgotado</div>}
+         {isOutOfStock && <div className="absolute top-2 left-2 bg-card/90 backdrop-blur-sm text-texto text-[8px] font-bold px-1.5 py-0.5 rounded-md uppercase shadow-sm z-10">Esgotado</div>}
        </div>
        <div className="flex flex-col flex-1 justify-between px-1 pb-1">
          <h3 className="font-medium text-xs text-texto line-clamp-2 leading-tight mb-2">{product.get("name")}</h3>
@@ -99,12 +99,12 @@ const StandardProductCard = React.memo(({ product, config, isFav, promo, onOpenD
 
   return (
     <div className={`relative shrink-0 ${wrapClass} snap-center pb-4 pt-2`}>
-      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group w-full h-full ${aspectClass} relative rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
-        <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
+      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group w-full h-full ${aspectClass} relative rounded-[32px] overflow-hidden bg-card shadow-sm transition-shadow duration-300 p-8 md:p-12 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+        <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`absolute inset-0 w-full h-full object-contain object-center p-8 md:p-12 ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         <div className="absolute top-5 left-5 flex items-center gap-2 z-30 pointer-events-none">
           {tag && <div className="bg-texto text-card text-xs font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-md">{tag}</div>}
           {hasDetails && !isOutOfStock && (
-            <div className={`backdrop-blur-md text-neutral-900 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 transition-opacity ${tag ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100 bg-white/30'}`}>
+            <div className={`backdrop-blur-md text-texto text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wider shadow-sm flex items-center gap-2 transition-opacity ${tag ? 'opacity-0 group-hover:opacity-100' : 'opacity-0 group-hover:opacity-100 bg-card/30'}`}>
               <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" /> Premium
             </div>
           )}
@@ -136,8 +136,8 @@ const PromoBannerCard = React.memo(({ product, isFav, promo, onOpenDetails, onTo
 
   return (
     <div className="relative shrink-0 w-[340px] snap-center pb-4 pt-4">
-      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group/card relative aspect-[3/4] w-full overflow-hidden rounded-[32px] bg-black transition-all duration-300 ${hasDetails && !isOutOfStock ? 'cursor-pointer hover:shadow-white/5' : ''}`}>
-        <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`absolute inset-0 w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
+      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`group/card relative aspect-[3/4] w-full overflow-hidden rounded-[32px] bg-black transition-all duration-300 p-8 ${hasDetails && !isOutOfStock ? 'cursor-pointer hover:shadow-white/5' : ''}`}>
+        <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`absolute inset-0 w-full h-full object-contain object-center p-8 ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         <div className="absolute top-5 left-5 flex flex-col gap-2 z-30 pointer-events-none">
           {!isOutOfStock && (
             <div className="bg-black/80 backdrop-blur-md text-white text-xs font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-md flex items-center gap-1.5 whitespace-nowrap">
@@ -173,8 +173,8 @@ const CatalogProductCard = React.memo(({ product, isFav, promo, onOpenDetails, o
   
   return (
     <div className="group relative flex flex-col h-full bg-transparent p-0 shadow-none gap-0">
-      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-full shrink-0 aspect-[4/5] overflow-hidden rounded-[24px] bg-card mb-4 relative border border-transparent hover:border-borda transition-colors ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
-        <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`w-full h-full object-cover object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
+      <div onClick={() => !isOutOfStock && onOpenDetails(product)} className={`w-full shrink-0 aspect-[4/5] overflow-hidden rounded-[24px] bg-card mb-4 relative border border-transparent hover:border-borda transition-colors p-6 md:p-10 ${!isOutOfStock ? 'cursor-pointer' : ''}`}>
+        <img src={product.get("imageUrl")} alt={product.get("name")} loading="lazy" decoding="async" className={`w-full h-full object-contain object-center ${isOutOfStock ? "opacity-50 grayscale" : ""}`} />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 pointer-events-none" />
         <button onClick={(e) => onToggleFav(product.id, e)} className="absolute top-4 right-4 p-2.5 bg-card/30 backdrop-blur-md rounded-full text-texto shadow-sm hover:bg-card transition-colors duration-300 z-20">
           <Heart className="w-4 h-4 transition-colors" fill={isFav ? "currentColor" : "none"} strokeWidth={isFav ? 0 : 2} />
@@ -569,7 +569,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
   }, [products, searchQuery]);
 
   const promoProducts = useMemo(() => products.filter(p => getActivePromo(p).isActive), [products, getActivePromo, currentTime]);
-  const bestSellers = useMemo(() => [...products].sort((a, b) => (b.get("salesCount") || 0) - (a.get("salesCount") || 0)).slice(0, 5), [products]);
+  const bestSellers = useMemo(() => [...products].sort((a, b) => (b.get("salesCount") || 0) - (a.get("salesCount") || 0)).slice(0, 4), [products]);
   const newArrivals = useMemo(() => [...products].sort((a, b) => b.createdAt > a.createdAt ? 1 : -1).slice(0, 4), [products]);
   const infoBannerProducts = useMemo(() => products.filter(p => p.get("isInfoBannerProduct")), [products]);
 
@@ -924,11 +924,11 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                             />
                             <div className="absolute inset-0 bg-black/30"></div>
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 sm:p-6 pb-8 md:pb-20">
-                              <motion.span initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }} className="text-neutral-100/90 uppercase tracking-[0.3em] text-[8px] sm:text-[10px] md:text-sm font-bold mb-1 md:mb-3 drop-shadow-sm">{bannersArray[currentBannerIndex].tag}</motion.span>
-                              <motion.h2 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.6 }} className="text-2xl sm:text-4xl md:text-7xl lg:text-8xl font-serif italic text-neutral-100 mb-2 md:mb-6 drop-shadow-md break-words leading-tight">{bannersArray[currentBannerIndex].title}</motion.h2>
-                              <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6, duration: 0.6 }} className="text-[10px] sm:text-base md:text-xl text-neutral-100/95 max-w-2xl mb-4 md:mb-10 drop-shadow-sm font-light px-2 sm:px-4">{bannersArray[currentBannerIndex].desc}</motion.p>
+                              <motion.span initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.2, duration: 0.6 }} className="text-white/90 uppercase tracking-[0.3em] text-[8px] sm:text-[10px] md:text-sm font-bold mb-1 md:mb-3 drop-shadow-sm">{bannersArray[currentBannerIndex].tag}</motion.span>
+                              <motion.h2 initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.6 }} className="text-2xl sm:text-4xl md:text-7xl lg:text-8xl font-serif italic text-white mb-2 md:mb-6 drop-shadow-md break-words leading-tight">{bannersArray[currentBannerIndex].title}</motion.h2>
+                              <motion.p initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.6, duration: 0.6 }} className="text-[10px] sm:text-base md:text-xl text-white/95 max-w-2xl mb-4 md:mb-10 drop-shadow-sm font-light px-2 sm:px-4">{bannersArray[currentBannerIndex].desc}</motion.p>
                               {bannersArray[currentBannerIndex].btn && (
-                                <motion.button initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.6 }} onClick={() => scrollToSection(bannersArray[currentBannerIndex].target)} className="px-5 py-2 md:px-10 md:py-4 bg-neutral-100 text-neutral-900 font-bold rounded-full hover:bg-neutral-300 transition-colors duration-300 shadow-2xl text-[10px] sm:text-base md:text-lg">{bannersArray[currentBannerIndex].btn}</motion.button>
+                                <motion.button initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.8, duration: 0.6 }} onClick={() => scrollToSection(bannersArray[currentBannerIndex].target)} className="px-5 py-2 md:px-10 md:py-4 bg-white text-black font-bold rounded-full hover:bg-neutral-200 transition-colors duration-300 shadow-2xl text-[10px] sm:text-base md:text-lg">{bannersArray[currentBannerIndex].btn}</motion.button>
                               )}
                             </div>
                           </motion.div>
@@ -1054,10 +1054,10 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                           </div>
                         ) : <p className="text-texto-sec col-span-full md:hidden">Sem dados de vendas.</p>}
 
-                        {/* Desktop Slider */}
-                        <div className="hidden md:flex overflow-x-auto gap-8 snap-x snap-mandatory scrollbar-hide pb-10 -mx-4 px-4 sm:-mx-6 sm:px-6 md:mx-0 md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                        {/* Desktop Grid (Fixo em 4) */}
+                        <div className="hidden md:grid md:grid-cols-4 gap-8 pb-10">
                           {bestSellers.length > 0 ? bestSellers.map(p => (
-                            <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-[320px] md:max-w-none" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
+                            <StandardProductCard key={p.id} product={p} config={{ wrapClass: "w-full" }} isFav={favorites.includes(p.id)} promo={getActivePromo(p)} onOpenDetails={openProductDetails} onToggleFav={toggleFavorite} onAddToCart={handleAddToCartClick} />
                           )) : <p className="text-texto-sec col-span-full">Sem dados de vendas.</p>}
                         </div>
                       </section>
@@ -1196,10 +1196,10 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                                       </motion.p>
                                       
                                       <motion.div initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.4, duration: 0.5, ease: "easeOut" }} className="flex items-center gap-3 pt-2 md:pt-4">
-                                        <button onClick={() => handleAddToCartClick(selectedLookItem)} className="flex-1 max-w-[300px] px-6 py-3.5 md:py-4 bg-texto text-card font-bold rounded-full text-xs md:text-base hover:opacity-90 transition-opacity flex items-center justify-center gap-2.5 shadow-xl active:scale-95 transition-transform">
+                                        <button onClick={() => handleAddToCartClick(selectedLookItem)} className="flex-1 max-w-[300px] px-6 py-3.5 md:py-4 bg-btn text-btn-texto font-bold rounded-full text-xs md:text-base hover:opacity-90 transition-opacity flex items-center justify-center gap-2.5 shadow-xl active:scale-95 transition-transform">
                                           <ShoppingBag className="w-4 h-4 md:w-5 md:h-5" /> Adicionar à Sacola
                                         </button>
-                                        <button onClick={() => openProductDetails(selectedLookItem)} className="p-3.5 md:p-4 bg-neutral-100 text-texto-sec rounded-full hover:bg-neutral-200 hover:text-texto transition-colors shrink-0" title="Ver detalhes completos">
+                                        <button onClick={() => openProductDetails(selectedLookItem)} className="p-3.5 md:p-4 bg-card border border-borda text-texto-sec rounded-full hover:bg-fundo hover:text-texto transition-colors shrink-0" title="Ver detalhes completos">
                                           <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
                                         </button>
                                       </motion.div>
@@ -1246,10 +1246,10 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                               <button 
                                 key={cat} 
                                 onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
-                                className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-full text-[11px] sm:text-sm font-bold transition-all duration-300 whitespace-nowrap shrink-0 ${
+                                className={`px-4.5 py-2 sm:px-5 sm:py-2.5 rounded-full text-[9.5px] sm:text-[13px] font-normal transition-all duration-300 whitespace-nowrap shrink-0 ${
                                   selectedCategory === cat 
-                                    ? "bg-texto text-card shadow-md scale-105" 
-                                    : "bg-neutral-100 text-texto-sec hover:bg-neutral-200 hover:text-texto cursor-pointer"
+                                    ? "bg-texto text-card scale-105 font-bold" 
+                                    : "bg-neutra-leve text-texto-sec hover:text-texto hover:bg-borda/30 cursor-pointer"
                                 }`}
                               >
                                 {cat}
@@ -1480,7 +1480,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                              <div className="space-y-3 md:space-y-4">
                                {order.get("items").map((item, index) => (
                                  <div key={index} className="flex items-center gap-3 sm:gap-4">
-                                   <img src={item.imageUrl} alt={item.name} className="w-12 h-12 sm:w-16 sm:h-16 object-cover rounded-lg border border-borda shrink-0" />
+                                   <img src={item.imageUrl} alt={item.name} className="w-12 h-12 sm:w-16 sm:h-16 object-contain p-1 rounded-lg border border-borda shrink-0" />
                                    <div className="flex-1 min-w-0">
                                      <p className="text-sm sm:text-base font-bold text-texto truncate">{item.name}</p>
                                      <p className="text-xs sm:text-sm text-texto-sec">{item.quantity}x de R$ {item.price.toFixed(2)}</p>
@@ -1624,7 +1624,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                                 const promo = getActivePromo(item.product);
                                 return (
                                   <div key={`${item.product.id}-${item.variant}`} className="flex flex-row gap-3.5 md:gap-6 p-3 md:p-4 rounded-xl md:rounded-2xl border border-borda transition-colors hover:bg-fundo relative">
-                                    <img src={item.product.get("imageUrl")} alt={item.product.get("name")} className="w-20 h-28 sm:w-28 sm:h-32 md:w-32 object-cover rounded-lg md:rounded-xl border border-borda shrink-0" />
+                                    <img src={item.product.get("imageUrl")} alt={item.product.get("name")} className="w-20 h-28 sm:w-28 sm:h-32 md:w-32 object-contain p-2 rounded-lg md:rounded-xl border border-borda shrink-0" />
                                     <div className="flex-1 flex flex-col justify-between min-w-0 pr-6 sm:pr-0">
                                       <div>
                                         <h3 className="font-bold text-texto text-sm md:text-lg truncate leading-snug">
@@ -1754,7 +1754,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               <button onClick={() => setQuickAdd({ isOpen: false, product: null, selectedVariant: "" })} className="absolute top-4 right-4 p-2.5 bg-fundo hover:bg-borda rounded-full text-texto-sec hover:text-texto transition-colors"><X className="w-4 h-4" /></button>
               
               <div className="flex items-center gap-4 mb-6 pr-8 mt-1">
-                <img src={quickAdd.product.get("imageUrl")} alt={quickAdd.product.get("name")} className="w-16 h-16 object-cover rounded-xl border border-borda shrink-0" />
+                <img src={quickAdd.product.get("imageUrl")} alt={quickAdd.product.get("name")} className="w-16 h-16 object-contain p-1.5 rounded-xl border border-borda shrink-0" />
                 <div>
                   <h3 className="font-bold text-texto line-clamp-1">{quickAdd.product.get("name")}</h3>
                   <p className="text-texto-sec text-sm">
@@ -1815,7 +1815,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                     return isVideo ? (
                       <video src={mediaUrl} autoPlay loop muted playsInline className="w-full h-full object-cover" />
                     ) : (
-                      <img src={mediaUrl} alt={detailedProduct.get("name")} className="w-full h-full object-cover" />
+                      <img src={mediaUrl} alt={detailedProduct.get("name")} className="w-full h-full object-contain p-4 md:p-8" />
                     );
                   })()}
                   

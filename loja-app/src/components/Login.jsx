@@ -3,8 +3,8 @@ import Parse from "../parseSetup";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 
-// DADOS DO CARROSSEL
-const slides = [
+// DADOS PADRÃO DO CARROSSEL (FALLBACK)
+const DEFAULT_SLIDES = [
   {
     image: "https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?q=80&w=2070&auto=format&fit=crop",
     tag: "Acesso Exclusivo",
@@ -16,12 +16,6 @@ const slides = [
     tag: "Coleção Essência",
     title: "Descubra o novo.",
     desc: "Peças pensadas para iluminar o seu dia a dia com conforto e muita elegância em cada detalhe."
-  },
-  {
-    image: "https://images.unsplash.com/photo-1445205170230-053b83016050?q=80&w=2071&auto=format&fit=crop",
-    tag: "Estilo Único",
-    title: "Expresse quem você é.",
-    desc: "A moda é a sua melhor forma de comunicação com o mundo sem precisar dizer uma única palavra."
   }
 ];
 
@@ -36,16 +30,41 @@ export default function Auth({ onLogin }) {
   const [error, setError] = useState("");
   const [toast, setToast] = useState({ show: false, message: "" });
 
-  // ESTADO DO CARROSSEL
+  // ESTADOS DO CARROSSEL DINÂMICO
+  const [slides, setSlides] = useState(DEFAULT_SLIDES);
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  // BUSCA OS SLIDES NO PARSE
+  useEffect(() => {
+    async function fetchLoginSlides() {
+      try {
+        const query = new Parse.Query("StoreSettings");
+        const res = await query.first();
+        if (res && res.get("loginBanners")?.length > 0) {
+          const formatted = res.get("loginBanners").map(b => ({
+            image: b.imageUrl,
+            tag: b.tag,
+            title: b.title,
+            desc: b.desc
+          }));
+          setSlides(formatted);
+        }
+      } catch (err) {
+        console.error("Erro ao carregar slides do login:", err);
+      }
+    }
+    fetchLoginSlides();
+  }, []);
 
   // EFEITO PARA GIRAR O CARROSSEL AUTOMATICAMENTE
   useEffect(() => {
-    const timer = setInterval(() => {
+    if (slides.length <= 1) return; // Se só tem 1 slide, não gira
+
+    const timer = setTimeout(() => {
       setCurrentSlide((prev) => (prev + 1) % slides.length);
-    }, 5000); // Troca a cada 5 segundos
-    return () => clearInterval(timer);
-  }, []);
+    }, 8000);
+    return () => clearTimeout(timer);
+  }, [currentSlide, slides.length]); 
 
   // ==========================================
   // LÓGICAS DE AUTENTICAÇÃO (PARSE)
@@ -117,7 +136,7 @@ export default function Auth({ onLogin }) {
       {/* ===================================================================== */}
       {/* LADO ESQUERDO: CARROSSEL ANIMADO (Esconde no celular) */}
       {/* ===================================================================== */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black carrossel-login">
         <AnimatePresence mode="wait">
           <motion.img 
             key={`img-${currentSlide}`}
@@ -151,16 +170,18 @@ export default function Auth({ onLogin }) {
           </AnimatePresence>
           
           {/* INDICADORES DO CARROSSEL (Agora são botões clicáveis!) */}
-          <div className="flex gap-2 mt-10">
-            {slides.map((_, index) => (
-              <button 
-                key={index}
-                onClick={() => setCurrentSlide(index)}
-                className={`h-1 rounded-full transition-all duration-500 ${index === currentSlide ? 'w-8 bg-white' : 'w-2 bg-white/30 hover:bg-white/60'}`}
-                aria-label={`Ir para o slide ${index + 1}`}
-              />
-            ))}
-          </div>
+          {slides.length > 1 && (
+            <div className="flex gap-2 mt-10">
+              {slides.map((_, index) => (
+                <button 
+                  key={index}
+                  onClick={() => setCurrentSlide(index)}
+                  className={`h-1 rounded-full transition-all duration-500 ${index === currentSlide ? 'w-8 bg-white' : 'w-2 bg-white/30 hover:bg-white/60'}`}
+                  aria-label={`Ir para o slide ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 

@@ -10,7 +10,7 @@
   --color-borda: var(--cor-borda);
   --color-btn: var(--cor-btn);
   --color-btn-texto: var(--cor-btn-texto);
-
+  --color-neutra-leve: var(--cor-neutra-leve);
 }
 
 /* 2. Cores do Modo Claro (Padrão) */
@@ -22,21 +22,22 @@
   --cor-borda: #e5e5e5;     /* Linhas de divisão */
   --cor-btn: #303030;       /* Botões Pretos */
   --cor-btn-texto: #ffffff; /* Texto do botão Branco */
+  --cor-neutra-leve: #f0f0f2; /* Branco acinzentado sutil */
 }
 
-/* 3. Cores do Modo Escuro (Grafite Suave e Branco Perolado) */
+/* 3. Cores do Modo Escuro (Premium Dark - OLED Style) */
 .dark {
-  --cor-fundo: #202024;     /* Cinza chumbo/grafite escuro (Não machuca o olho) */
-  --cor-card: #27272a;      /* Levemente mais claro para os cards destacarem */
-  --cor-texto: #f4f4f5;     /* Branco perolado/gelo (Não estoura a visão) */
-  --cor-texto-sec: #a1a1aa; /* Cinza médio elegante */
-  --cor-borda: #3f3f46;     /* Linhas discretas */
-  --cor-btn: #f4f4f5;       /* Botões Brancos */
-  --cor-btn-texto: #18181b; /* Texto do botão Escuro */
+  --cor-fundo: #181818;     /* Cinza chumbo/grafite antigo */
+  --cor-card: #27272a;      /* Tom de card antigo */
+  --cor-texto: #ffffff;     /* Mantendo o branco puro para não apagar */
+  --cor-texto-sec: #a1a1aa; 
+  --cor-borda: #3f3f46;     /* Borda compatível com o grafite */
+  --cor-btn: #ebebeb;       /* Botões Brancos */
+  --cor-btn-texto: #0a0a0b; /* Texto do botão Preto */
+  --cor-neutra-leve: #2a2a2d; /* Cinza sutil para o modo dark */
 }
 
-.carrossel-login{
-    margin: 10px;
-    padding: 15px;
-    border-radius: 20px;
+.carrossel-login {
+    margin: 0.6vw 0 0.6vw 0.6vw;
+    overflow: hidden;
 }
