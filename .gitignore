@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# Banco de dados local (Parse Server de dev)
+server/.data
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

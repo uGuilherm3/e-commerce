@@ -25,20 +25,17 @@ jobs:
           node-version: 20
           
       - name: Instalar Dependências e Compilar
-        # 👇 A MÁGICA: Avisamos o robô para entrar na sua subpasta!
-        working-directory: ./loja-app
         run: |
           npm install
           npm run build
-          
+
       - name: Preparar o GitHub Pages
         uses: actions/configure-pages@v4
-        
+
       - name: Fazer o Upload da pasta 'dist'
         uses: actions/upload-pages-artifact@v3
         with:
-          # 👇 A MÁGICA 2: Mostramos onde a pasta 'dist' foi criada
-          path: './loja-app/dist' 
+          path: './dist'
           
       - name: Publicar o Site
         id: deployment

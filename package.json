@@ -4,7 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -n server,vite -c magenta,cyan \"npm:dev:server\" \"vite\"",
+    "dev:web": "vite",
+    "dev:server": "node server/index.js",
+    "db:reset": "node -e \"require('fs').rmSync('server/.data',{recursive:true,force:true})\"",
     "build": "vite build",
     "preview": "vite preview"
   },
@@ -22,10 +25,14 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "autoprefixer": "^10.4.27",
+    "concurrently": "^10.0.3",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "express": "^5.2.1",
     "globals": "^16.5.0",
+    "mongodb-memory-server": "^11.2.0",
+    "parse-server": "^9.10.0",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
     "vite": "^7.3.1"

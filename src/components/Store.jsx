@@ -699,7 +699,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           👇 CABEÇALHO OTIMIZADO PARA MOBILE E DESKTOP 👇
           ============================================================================== */}
       <header className="bg-fundo transition-colors duration-500 sticky top-0 z-50 md:border-none">
-        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-14 md:h-20 flex items-center justify-between gap-3 md:gap-4 relative">
+        <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 md:px-12 lg:px-16 h-12 md:h-16 flex items-center justify-between gap-3 md:gap-4 relative">
           
           {/* Logo Centralizada no Mobile */}
           <div className="absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:flex-1 md:flex md:justify-start z-20">
@@ -709,7 +709,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                 setCurrentView("store"); 
                 window.scrollTo(0,0);
               }} 
-              className="text-xl md:text-3xl font-serif italic tracking-wide text-texto hover:opacity-70 transition-opacity truncate"
+              className="text-[18px] md:text-[28px] font-serif italic tracking-wide text-neutral-800 dark:text-neutral-100 hover:opacity-70 transition-opacity truncate cursor-pointer"
             >
               Flor e Sol
             </button>
@@ -720,22 +720,22 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           {currentView === "store" && (
             <div className="hidden md:flex flex-[2] justify-center items-center">
               <div className={`relative flex items-center h-10 md:h-11 rounded-full overflow-hidden transition-colors duration-300 ${isSearchExpanded ? 'bg-texto text-card shadow-md w-full max-w-[600px]' : 'bg-transparent hover:bg-texto/5 w-[44px]'}`}>
-                <button onClick={() => setIsSearchExpanded(true)} className={`absolute left-0 z-10 w-10 md:w-11 h-10 md:h-11 flex items-center justify-center transition-colors duration-300 ${isSearchExpanded ? 'text-card cursor-default pointer-events-none' : 'text-texto'}`}><Search className="w-4 h-4 md:w-5 md:h-5" /></button>
+                <button onClick={() => setIsSearchExpanded(true)} className={`absolute left-0 z-10 w-10 md:w-11 h-10 md:h-11 flex items-center justify-center transition-colors duration-300 cursor-pointer ${isSearchExpanded ? 'text-card cursor-default pointer-events-none' : 'text-neutral-800 dark:text-neutral-100'}`}><Search className="w-[13px] h-[13px] md:w-[17px] md:h-[17px]" /></button>
                 <input type="text" placeholder="O que você está procurando?" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className={`w-full h-full bg-transparent border-none py-2 pl-10 md:pl-12 pr-10 md:pr-12 focus:outline-none text-sm md:text-base transition-opacity duration-300 ${isSearchExpanded ? 'opacity-100 text-card placeholder:text-card/70' : 'opacity-0 cursor-pointer'}`} style={{ pointerEvents: isSearchExpanded ? 'auto' : 'none' }} />
-                {isSearchExpanded && (<button onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }} className="absolute right-0 z-10 w-10 md:w-11 h-10 md:h-11 flex items-center justify-center text-card/70 hover:text-card hover:bg-card/10 rounded-full transition-colors"><X className="w-4 h-4" /></button>)}
+                {isSearchExpanded && (<button onClick={() => { setIsSearchExpanded(false); setSearchQuery(''); }} className="absolute right-0 z-10 w-10 md:w-11 h-10 md:h-11 flex items-center justify-center text-card/70 hover:text-card hover:bg-card/10 rounded-full transition-colors cursor-pointer"><X className="w-[13px] h-[13px]" /></button>)}
               </div>
             </div>
           )}
 
-          <div className="flex-1 flex justify-end items-center gap-2 md:gap-4 text-texto-sec relative z-20">
+          <div className="flex-1 flex justify-end items-center gap-2 md:gap-4 text-neutral-800 dark:text-neutral-100 relative z-20">
             {/* Ícones Exclusivos do Desktop */}
             <div className="hidden md:flex items-center gap-2">
-              <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-full text-texto-sec hover:text-texto hover:bg-texto/5 transition-colors">
-                {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+              <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-2.5 rounded-full text-neutral-800 dark:text-neutral-100 hover:bg-texto/5 transition-colors cursor-pointer">
+                {isDarkMode ? <Sun className="w-[17px] h-[17px]" /> : <Moon className="w-[17px] h-[17px]" />}
               </button>
 
-              <button onClick={() => setCurrentView("cart")} className={`p-2.5 rounded-full transition-colors relative ${currentView === "cart" ? "bg-texto text-card" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}>
-                <ShoppingBag className="w-5 h-5" />
+              <button onClick={() => setCurrentView("cart")} className={`p-2.5 rounded-full transition-colors relative cursor-pointer ${currentView === "cart" ? "bg-texto text-card" : "text-neutral-800 dark:text-neutral-100 hover:bg-texto/5"}`}>
+                <ShoppingBag className="w-[17px] h-[17px]" />
                 {cartItemsCount > 0 && (<span className={`absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full border-2 ${currentView === "cart" ? "bg-card border-texto" : "bg-texto border-fundo"}`} />)}
               </button>
               
@@ -746,16 +746,16 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
               >
                 <button 
                   onClick={() => activeUser ? setIsUserMenuOpen(!isUserMenuOpen) : onRequireLogin()} 
-                  className={`flex items-center gap-2 px-3 py-2.5 rounded-full transition-colors ${currentView === "profile" ? "bg-texto text-card shadow-sm" : "text-texto-sec hover:text-texto hover:bg-texto/5"}`}
+                  className={`flex items-center gap-2 px-3 py-2.5 rounded-full transition-colors ${currentView === "profile" ? "bg-texto text-card shadow-sm" : "text-neutral-800 dark:text-neutral-100 hover:bg-texto/5"}`}
                 >
+                  <span className="text-xs font-medium truncate max-w-[150px]">
+                    {activeUser?.get("name") ? `Olá, ${activeUser.get("name").split(" ")[0]}` : "Entrar"}
+                  </span>
                   {userAvatar ? (
                     <img src={userAvatar} alt="Perfil" className={`w-7 h-7 rounded-full object-cover border ${currentView === "profile" ? "border-card/30" : "border-borda"}`} />
                   ) : (
-                    <User className="w-5 h-5" />
+                    <User className="w-[17px] h-[17px]" />
                   )}
-                  <span className="text-sm font-medium truncate max-w-[150px]">
-                    {activeUser?.get("name") ? `Olá, ${activeUser.get("name").split(" ")[0]}` : "Entrar"}
-                  </span>
                 </button>
 
                 <AnimatePresence>
@@ -775,11 +775,11 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                             <p className="text-xs text-texto-sec truncate">{activeUser.get("email")}</p>
                           </div>
                         </div>
-                        <button onClick={() => { setCurrentView("profile"); setProfileTab("data"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Settings className="w-4 h-4" /> Meus Dados</button>
-                        <button onClick={() => { setCurrentView("profile"); setProfileTab("orders"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Package className="w-4 h-4" /> Meus Pedidos</button>
-                        <button onClick={() => { setCurrentView("profile"); setProfileTab("favorites"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors"><Heart className="w-4 h-4" /> Meus Favoritos</button>
+                        <button onClick={() => { setCurrentView("profile"); setProfileTab("data"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors cursor-pointer"><Settings className="w-4 h-4" /> Meus Dados</button>
+                        <button onClick={() => { setCurrentView("profile"); setProfileTab("orders"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors cursor-pointer"><Package className="w-4 h-4" /> Meus Pedidos</button>
+                        <button onClick={() => { setCurrentView("profile"); setProfileTab("favorites"); setIsUserMenuOpen(false); }} className="w-full text-left px-4 py-2.5 text-sm text-texto-sec hover:bg-fundo hover:text-texto flex items-center gap-3 transition-colors cursor-pointer"><Heart className="w-4 h-4" /> Meus Favoritos</button>
                         <div className="h-px bg-borda my-2"></div>
-                        <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-colors"><LogOut className="w-4 h-4" /> Sair da Conta</button>
+                        <button onClick={onLogout} className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-500/10 flex items-center gap-3 transition-colors cursor-pointer"><LogOut className="w-4 h-4" /> Sair da Conta</button>
                       </div>
                     </motion.div>
                   )}
@@ -809,7 +809,7 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
                   placeholder="Buscar produtos..." 
                   className="flex-1 bg-transparent border-none outline-none text-sm px-3 text-texto" 
                 />
-                {searchQuery && <button onClick={() => setSearchQuery('')}><X className="w-4 h-4 text-texto-sec"/></button>}
+                {searchQuery && <button onClick={() => setSearchQuery('')} className="cursor-pointer"><X className="w-4 h-4 text-texto-sec"/></button>}
               </div>
             </motion.div>
           )}
@@ -820,29 +820,23 @@ export default function Store({ currentUser, onLogout, onRequireLogin }) {
           👇 NAVIGATION BAR INFERIOR FLUTUANTE (MOBILE) 👇
           ============================================================================== */}
       {!detailedProduct && (
-        <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-fundo/80 backdrop-blur-md rounded-2xl z-[100] flex justify-around items-center h-16 px-2 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
-          <button onClick={() => {setCurrentView('store'); setIsSearchExpanded(false); window.scrollTo(0,0);}} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${currentView === 'store' && !isSearchExpanded ? 'text-texto scale-110' : 'text-texto-sec hover:text-texto'} transition-all`}>
+        <nav className="md:hidden fixed bottom-4 left-1/2 -translate-x-1/2 w-fit bg-fundo/70 backdrop-blur-xl border border-borda/50 rounded-full z-[100] flex items-center gap-4 h-16 px-2.5 shadow-[0_8px_30px_rgba(0,0,0,0.12)]">
+          <button onClick={() => {setCurrentView('store'); setIsSearchExpanded(false); window.scrollTo(0,0);}} className={`flex items-center justify-center h-11 w-11 rounded-full transition-all ${currentView === 'store' && !isSearchExpanded ? 'bg-texto/10 text-texto' : 'text-texto-sec hover:text-texto'}`}>
             <Home className="w-5 h-5" />
-            <span className="text-[9px] font-bold tracking-wide">Início</span>
           </button>
-          <button onClick={() => {setCurrentView('store'); setIsSearchExpanded(true); window.scrollTo(0,0);}} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${isSearchExpanded ? 'text-texto scale-110' : 'text-texto-sec hover:text-texto'} transition-all`}>
+          <button onClick={() => {setCurrentView('store'); setIsSearchExpanded(true); window.scrollTo(0,0);}} className={`flex items-center justify-center h-11 w-11 rounded-full transition-all ${isSearchExpanded ? 'bg-texto/10 text-texto' : 'text-texto-sec hover:text-texto'}`}>
             <Search className="w-5 h-5" />
-            <span className="text-[9px] font-bold tracking-wide">Busca</span>
           </button>
-          <button onClick={() => setCurrentView('cart')} className={`flex flex-col items-center justify-center w-full h-full space-y-1 relative ${currentView === 'cart' ? 'text-texto scale-110' : 'text-texto-sec hover:text-texto'} transition-all`}>
-            <div className="relative">
-              <ShoppingBag className="w-5 h-5" />
-              {cartItemsCount > 0 && <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-texto text-card text-[9px] font-bold rounded-full flex items-center justify-center">{cartItemsCount}</span>}
-            </div>
-            <span className="text-[9px] font-bold tracking-wide">Sacola</span>
+          <button onClick={() => setCurrentView('cart')} className={`relative flex items-center justify-center h-11 w-11 rounded-full transition-all ${currentView === 'cart' ? 'bg-texto/10 text-texto' : 'text-texto-sec hover:text-texto'}`}>
+            <ShoppingBag className="w-5 h-5" />
+            {cartItemsCount > 0 && <span className="absolute top-1 right-1.5 w-4 h-4 bg-texto text-card text-[9px] font-bold rounded-full flex items-center justify-center">{cartItemsCount}</span>}
           </button>
-          <button onClick={() => activeUser ? setCurrentView('profile') : onRequireLogin()} className={`flex flex-col items-center justify-center w-full h-full space-y-1 ${currentView === 'profile' ? 'text-texto scale-110' : 'text-texto-sec hover:text-texto'} transition-all`}>
+          <button onClick={() => activeUser ? setCurrentView('profile') : onRequireLogin()} className={`flex items-center justify-center h-11 w-11 rounded-full transition-all ${currentView === 'profile' ? 'bg-texto/10 text-texto' : 'text-texto-sec hover:text-texto'}`}>
             {userAvatar && currentView === 'profile' ? (
-              <img src={userAvatar} alt="Perfil" className="w-5 h-5 rounded-full object-cover border border-borda" />
+              <img src={userAvatar} alt="Perfil" className="w-6 h-6 rounded-full object-cover border border-borda" />
             ) : (
               <User className="w-5 h-5" />
             )}
-            <span className="text-[9px] font-bold tracking-wide">Perfil</span>
           </button>
         </nav>
       )}

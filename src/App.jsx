@@ -3,6 +3,7 @@ import Parse from './parseSetup';
 import Login from './components/Login';
 import Store from './components/Store';
 import AdminPanel from './components/AdminPanel';
+import CustomScrollbar from './components/CustomScrollbar';
 
 function App() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -41,6 +42,8 @@ function App() {
 
   return (
     <>
+      <CustomScrollbar />
+
       {/* BOTÃO DO PAINEL DE ADM */}
       {isAdmin && currentView !== "admin" && (
         <button
